@@ -1,0 +1,8 @@
+{
+  "name": "trucktaxpro-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "sync": "node sync.mjs" },
+  "dependencies": { "@supabase/supabase-js": "^2.45.0", "dotenv": "^16.4.5", "mssql": "^11.0.1" }
+}

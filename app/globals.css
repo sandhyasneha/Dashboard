@@ -1,0 +1,25 @@
+@import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html { background: #F6F7F4; }
+body { @apply font-sans text-ink antialiased; font-feature-settings: "tnum" 1, "ss01" 1; }
+h1, h2, h3 { letter-spacing: -0.01em; }
+*:focus-visible { outline: 2px solid #0E6B41; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.btn { @apply inline-flex items-center gap-2 h-10 px-4 rounded-md text-sm font-semibold border transition-colors; }
+.btn-primary { @apply btn bg-sign text-white border-sign hover:bg-[#0B5734]; }
+.btn-secondary { @apply btn bg-white text-ink border-line hover:bg-slate; }
+.btn-danger { @apply btn bg-white text-brick border-brickSoft hover:bg-brickSoft; }
+.input { @apply h-10 w-full rounded-md border border-line bg-white px-3 text-sm text-ink placeholder:text-muted/70; }
+.textarea { @apply w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink leading-relaxed; }
+.label { @apply block text-sm font-medium text-ink mb-1.5; }
+.panel { @apply bg-white border border-line rounded-lg; }
+.pill { @apply inline-flex items-center h-6 px-2 rounded text-xs font-semibold; }
+.table { @apply w-full text-sm; }
+.table th { @apply text-left font-semibold text-muted py-2.5 px-3 border-b border-line; }
+.table td { @apply py-2.5 px-3 border-b border-line align-top; }
+.table tr:last-child td { @apply border-b-0; }
