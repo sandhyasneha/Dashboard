@@ -42,7 +42,7 @@ export function renderHtml(bodyMd: string, unsubscribeUrl: string) {
 <tr><td style="padding:16px 36px 28px 36px;font-size:12px;line-height:1.5;color:#5B6573;border-top:1px solid #D9DDD6">
 TruckTaxPro · IRS-authorized Form 2290 e-file provider<br/>
 ${esc(process.env.COMPANY_POSTAL_ADDRESS || "Add your postal address in COMPANY_POSTAL_ADDRESS")}<br/>
-You're receiving this because your carrier is listed in the public FMCSA registry. <a href="${unsubscribeUrl}" style="color:#5B6573">Unsubscribe</a>
+${esc(process.env.EMAIL_FOOTER_REASON || "You're receiving this because you've used TruckTaxPro for Form 2290 filing.")} <a href="${unsubscribeUrl}" style="color:#5B6573">Unsubscribe</a>
 </td></tr></table></td></tr></table></body></html>`;
 }
 

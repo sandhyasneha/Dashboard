@@ -51,3 +51,15 @@ export async function campaignsWithStats(opts: { status?: string; limit?: number
   const byId = new Map<string, any>((stats ?? []).map((x: any) => [x.campaign_id, x]));
   return (data ?? []).map((c: any) => ({ ...c, campaign_stats: byId.has(c.id) ? [byId.get(c.id)] : [] }));
 }
+
+/** The full lapsed list, paged because Supabase caps a response at 1,000 rows. */
+export async function fetchLapsed(prev: number, curr: number) {
+  const sb = supabaseAdmin(); const out: any[] = []; const size = 1000;
+  for (let from = 0; ; from += size) {
+    const { data } = await sb.rpc("dash_lapsed", { p_prev: prev, p_curr: curr }).range(from, from + size - 1);
+    if (!data?.length) break;
+    out.push(...data);
+    if (data.length < size) break;
+  }
+  return out;
+}

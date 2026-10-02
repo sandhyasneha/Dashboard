@@ -2,11 +2,12 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { PageHeader, StatusPill, Empty } from "@/components/ui";
 import { n, pct } from "@/lib/format";
+import { campaignsWithStats } from "@/lib/dash";
 
 export const dynamic = "force-dynamic";
 
 export default async function Campaigns() {
-  const { data } = await supabaseAdmin().from("campaigns").select("*, campaign_stats(*)").order("created_at", { ascending: false });
+  const data = await campaignsWithStats();
   return (
     <>
       <PageHeader title="Campaigns" sub="Each campaign is a sequence of emails sent a few days apart." action={<Link href="/campaigns/new" className="btn-primary">New campaign</Link>} />

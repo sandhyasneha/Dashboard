@@ -5,14 +5,15 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 export const dynamic = "force-dynamic";
 
 export default async function NewCampaign() {
-  const sb = supabaseAdmin();
-  const { data } = await sb.from("leads").select("state, carrier_type").eq("status", "new").eq("is_customer", false).limit(100000);
-  const byState: Record<string, number> = {}; const byType: Record<string, number> = {};
-  for (const l of data ?? []) { if (l.state) byState[l.state] = (byState[l.state] ?? 0) + 1; if (l.carrier_type) byType[l.carrier_type] = (byType[l.carrier_type] ?? 0) + 1; }
+  const { data } = await supabaseAdmin().rpc("lead_facets");
+  const byState: Record<string, number> = {}; const byType: Record<string, number> = {}; let total = 0;
+  for (const r of (data ?? []) as { kind: string; label: string; n: number }[]) {
+    if (r.kind === "state") byState[r.label] = r.n; else if (r.kind === "type") byType[r.label] = r.n; else total = r.n;
+  }
   return (
     <>
-      <PageHeader title="New campaign" sub="Only leads marked new are enrolled, so a carrier is never in two sequences at once." />
-      <CampaignBuilder byState={byState} byType={byType} />
+      <PageHeader title="New campaign" sub="Only leads marked new are enrolled, so a contact is never in two sequences at once. Leads who have already registered are handled by Retention." />
+      <CampaignBuilder byState={byState} byType={byType} total={total} />
     </>
   );
 }

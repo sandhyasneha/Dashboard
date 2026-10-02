@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase-server";
+import { chunk } from "@/lib/util";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -40,12 +41,13 @@ export async function POST(req: Request) {
 
   const sb = supabaseAdmin();
   const emails = clean.map((c) => c.email);
-  const [{ data: sup }, { data: existing }] = await Promise.all([
-    sb.from("suppressions").select("email").in("email", emails),
-    sb.from("leads").select("email").in("email", emails),
-  ]);
-  const suppressed = new Set((sup ?? []).map((s) => s.email));
-  const existingSet = new Set((existing ?? []).map((e) => e.email));
+  const sup: { email: string }[] = []; const existing: { email: string }[] = [];
+  for (const part of chunk(emails, 100)) { // long .in() lists exceed the URL limit, so look up 100 at a time
+    const [a, b] = await Promise.all([sb.from("suppressions").select("email").in("email", part), sb.from("leads").select("email").in("email", part)]);
+    sup.push(...(a.data ?? [])); existing.push(...(b.data ?? []));
+  }
+  const suppressed = new Set(sup.map((s) => s.email));
+  const existingSet = new Set(existing.map((e) => e.email));
   const toUpsert = clean.filter((c) => !suppressed.has(c.email));
 
   const { error } = await sb.from("leads").upsert(toUpsert, { onConflict: "email" });

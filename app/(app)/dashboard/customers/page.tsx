@@ -13,12 +13,12 @@ export default async function CustomerGrowth() {
   const data = series.map((r) => { cum += r.registered; const d = new Date(r.month); return { month: d.toLocaleDateString("en-US", { month: "short", year: "2-digit" }), registered: r.registered, cumulative: cum }; });
   const head = { count: "exact" as const, head: true };
   const since30 = new Date(Date.now() - 30 * 86400000).toISOString();
-  const [total, last30, filers, recent] = await Promise.all([
+  const [total, last30, filersRes, recent] = await Promise.all([
     sb.from("ttp_users").select("user_id", head), sb.from("ttp_users").select("user_id", head).gte("registered_at", since30),
-    sb.from("ttp_filings").select("email").eq("status_id", 4),
+    sb.rpc("dash_unique_filers"),
     sb.from("ttp_users").select("name, email, phone, registered_at").order("registered_at", { ascending: false }).limit(25),
   ]);
-  const uniqueFilers = new Set((filers.data ?? []).map((f: any) => f.email)).size;
+  const uniqueFilers = Number(filersRes.data ?? 0);
 
   return (
     <>

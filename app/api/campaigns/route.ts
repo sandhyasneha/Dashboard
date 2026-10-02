@@ -3,7 +3,7 @@ import { supabaseAdmin, supabaseServer } from "@/lib/supabase-server";
 
 type Step = { subject: string; body_md: string; delay_days: number };
 
-/** Create a campaign with its steps, then enroll every matching lead. */
+/** Create a campaign with its steps, then enroll every matching lead (done in SQL, so thousands of rows are fine). */
 export async function POST(req: Request) {
   const { data: u } = await supabaseServer().auth.getUser();
   if (!u.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
   const { data: c, error } = await sb.from("campaigns").insert({
     name: body.name, daily_cap: body.daily_cap ?? 800,
     filter_states: body.filter_states ?? [], filter_carrier_types: body.filter_carrier_types ?? [],
-    filter_min_units: body.filter_min_units ?? 1, filter_max_units: body.filter_max_units ?? 200,
+    filter_min_units: body.filter_min_units ?? null, filter_max_units: body.filter_max_units ?? null,
   }).select().single();
   if (error || !c) return NextResponse.json({ error: error?.message }, { status: 500 });
 
@@ -26,22 +26,8 @@ export async function POST(req: Request) {
   const { error: se } = await sb.from("campaign_steps").insert(steps);
   if (se) return NextResponse.json({ error: se.message }, { status: 500 });
 
-  // Enroll matching leads in pages of 1000.
-  let enrolled = 0, from = 0; const page = 1000;
-  while (true) {
-    let q = sb.from("leads").select("id").eq("is_customer", false).eq("status", "new")
-      .gte("power_units", c.filter_min_units).lte("power_units", c.filter_max_units);
-    if (c.filter_states?.length) q = q.in("state", c.filter_states);
-    if (c.filter_carrier_types?.length) q = q.in("carrier_type", c.filter_carrier_types);
-    const { data: leads } = await q.order("created_at").range(from, from + page - 1);
-    if (!leads || leads.length === 0) break;
-    const rows = leads.map((l) => ({ campaign_id: c.id, lead_id: l.id, next_send_at: new Date().toISOString() }));
-    await sb.from("enrollments").upsert(rows, { onConflict: "campaign_id,lead_id", ignoreDuplicates: true });
-    await sb.from("leads").update({ status: "in_sequence" }).in("id", leads.map((l) => l.id));
-    enrolled += leads.length;
-    if (leads.length < page) break;
-    // Leads just moved to in_sequence, so the next page starts at 0 again.
-  }
+  const { data: enrolled, error: ee } = await sb.rpc("enroll_campaign", { p_campaign_id: c.id });
+  if (ee) return NextResponse.json({ error: `Campaign created but enrolment failed: ${ee.message}. Did you run supabase/patch-002.sql?` }, { status: 500 });
   return NextResponse.json({ id: c.id, enrolled });
 }
 
