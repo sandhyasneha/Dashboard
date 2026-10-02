@@ -38,3 +38,16 @@ export async function lastSync() {
 }
 
 export const money = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+
+/** Campaigns with their stats attached as campaign_stats[0]. Separate queries because a view can't be embedded. */
+export async function campaignsWithStats(opts: { status?: string; limit?: number } = {}) {
+  const sb = supabaseAdmin();
+  let q = sb.from("campaigns").select("*").order("created_at", { ascending: false });
+  if (opts.status) q = q.eq("status", opts.status);
+  if (opts.limit) q = q.limit(opts.limit);
+  const { data } = await q;
+  const ids = (data ?? []).map((c: any) => c.id);
+  const { data: stats } = ids.length ? await sb.from("campaign_stats").select("*").in("campaign_id", ids) : { data: [] as any[] };
+  const byId = new Map<string, any>((stats ?? []).map((x: any) => [x.campaign_id, x]));
+  return (data ?? []).map((c: any) => ({ ...c, campaign_stats: byId.has(c.id) ? [byId.get(c.id)] : [] }));
+}

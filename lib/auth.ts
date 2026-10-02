@@ -7,7 +7,6 @@ export async function requireUser() {
   const { data } = await sb.auth.getUser();
   const allowed = (process.env.ADMIN_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
   if (!data.user || (allowed.length && !allowed.includes((data.user.email ?? "").toLowerCase()))) {
-    await sb.auth.signOut();
     redirect("/login");
   }
   return data.user;

@@ -1,17 +1,20 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createBrowserClient } from "@supabase/ssr";
 
 export default function Login() {
   const router = useRouter();
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!).auth.signOut({ scope: "local" });
+  }, []);
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setErr(""); setBusy(true);
     const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
     const { error } = await sb.auth.signInWithPassword({ email, password });
     setBusy(false);
-    if (error) { setErr("Email or password is incorrect."); return; }
+    if (error) { setErr(error.message); return; }
     router.push("/"); router.refresh();
   }
   return (

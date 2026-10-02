@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { PageHeader, Stat, StatusPill } from "@/components/ui";
 import { MonthlyBars, StatusDonut } from "@/components/Charts";
-import { activeTaxYear, filingsSeries, lastSync, money, tyLabel } from "@/lib/dash";
+import { activeTaxYear, campaignsWithStats, filingsSeries, lastSync, money, tyLabel } from "@/lib/dash";
 import { n, pct, when } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export default async function Overview() {
     sb.from("ttp_filings").select("service_fee").eq("status_id", 4).gte("completed_at", monthStart.toISOString()),
     sb.from("leads").select("id", head), sb.from("leads").select("id", head).eq("is_customer", true),
     sb.from("sends_this_month").select("n").single(), sb.from("settings").select("*").eq("id", 1).single(),
-    sb.from("campaigns").select("*, campaign_stats(*)").eq("status", "running").limit(3),
+    campaignsWithStats({ status: "running", limit: 3 }).then((data) => ({ data })),
   ]);
   const filedTY = series.reduce((a, r) => a + r.filed, 0);
   const revTY = series.reduce((a, r) => a + r.revenue, 0);

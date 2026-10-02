@@ -16,7 +16,11 @@ export async function middleware(req: NextRequest) {
     },
   });
   const { data } = await sb.auth.getUser();
-  if (!data.user) return NextResponse.redirect(new URL("/login", req.url));
+  if (!data.user) {
+    const out = NextResponse.redirect(new URL("/login", req.url));
+    req.cookies.getAll().filter((c) => c.name.startsWith("sb-")).forEach((c) => out.cookies.delete(c.name));
+    return out;
+  }
   return res;
 }
 export const config = { matcher: ["/((?!_next|favicon.ico).*)"] };

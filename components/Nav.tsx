@@ -23,7 +23,7 @@ export function Nav({ email }: { email: string }) {
   const router = useRouter();
   async function signOut() {
     const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    await sb.auth.signOut(); router.push("/login"); router.refresh();
+    await sb.auth.signOut({ scope: "local" }); router.push("/login"); router.refresh();
   }
   return (
     <aside className="border-r border-line bg-white flex flex-col">
