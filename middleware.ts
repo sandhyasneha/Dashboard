@@ -17,8 +17,10 @@ export async function middleware(req: NextRequest) {
   });
   const { data } = await sb.auth.getUser();
   if (!data.user) {
-    const out = NextResponse.redirect(new URL("/login", req.url));
-    req.cookies.getAll().filter((c) => c.name.startsWith("sb-")).forEach((c) => out.cookies.delete(c.name));
+    const stale = req.cookies.getAll().filter((c) => c.name.startsWith("sb-"));
+    // A cookie existed but Supabase rejected it: tell the login page why. A first-time visitor just gets the plain form.
+    const out = NextResponse.redirect(new URL(stale.length ? "/login?reason=session" : "/login", req.url));
+    stale.forEach((c) => out.cookies.delete(c.name));
     return out;
   }
   return res;

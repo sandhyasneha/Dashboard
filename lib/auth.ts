@@ -5,10 +5,10 @@ import { supabaseServer } from "./supabase-server";
 export async function requireUser() {
   const sb = supabaseServer();
   const { data } = await sb.auth.getUser();
+  if (!data.user) redirect("/login?reason=session");
   const allowed = (process.env.ADMIN_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-  if (!data.user || (allowed.length && !allowed.includes((data.user.email ?? "").toLowerCase()))) {
-    redirect("/login");
-  }
+  const mail = (data.user.email ?? "").toLowerCase();
+  if (allowed.length && !allowed.includes(mail)) redirect(`/login?reason=not-admin&as=${encodeURIComponent(mail)}`);
   return data.user;
 }
 
