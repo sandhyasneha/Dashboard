@@ -141,6 +141,30 @@ export const KB: KbArticle[] = [
     ],
   },
   {
+    slug: "tracking", group: "Campaigns", title: "Opens, clicks and tracking",
+    summary: "Why the numbers can be zero, and how to turn tracking on.",
+    sections: [
+      { heading: "What comes from where", steps: [
+        "Delivered, bounced and spam complaints come from Resend through the webhook.",
+        "Opened and Clicked also come through the webhook, but Resend only records them when tracking is switched on for the sending domain. It is off by default.",
+        "Test emails are not counted in the campaign numbers. The Recent test emails table on a campaign page shows what Resend reported for them.",
+      ] },
+      { heading: "Turn tracking on", steps: [
+        "In Resend, open Domains and click your sending domain.",
+        "In the Configuration tab, find Enable tracking metrics and click Configure.",
+        "Give the tracking subdomain a name, tick Click tracking and Open tracking, and add it.",
+        "Add the DNS record Resend shows, wherever the domain's DNS is managed, then press the button to verify.",
+      ], note: "Using your own tracking subdomain keeps link and image addresses on your domain instead of a shared one, which is better for deliverability." },
+      { heading: "Check that it works", steps: [
+        "Send a test of the whole sequence to your own address from any campaign page.",
+        "Open one email and click a link in it.",
+        "Within about a minute the Recent test emails table shows times under Delivered, Opened and Clicked.",
+      ] },
+      { heading: "If Delivered stays empty", text: "The webhook is not reaching the app. In Resend, Webhooks, the endpoint must be `https://trucktaxpro-filing.com/api/webhooks/resend`, with all email events ticked and its signing secret saved as `RESEND_WEBHOOK_SECRET` in Vercel. To see whether anything has arrived, run this in the Supabase SQL editor.", code: "select type, count(*), max(received_at) from email_events group by type order by max(received_at) desc;" },
+      { heading: "Reading the numbers", note: "Treat opens as a rough guide. Some mail apps block or pre-load images, so opens can be missed or inflated. Clicks are more reliable, and customers who go on to file are the number that matters most." },
+    ],
+  },
+  {
     slug: "warm-up", group: "Campaigns", title: "Warm up the sending domain",
     summary: "How to ramp up without landing in spam.",
     sections: [
@@ -299,6 +323,8 @@ git push` },
         "In Resend, Webhooks, the endpoint must be `https://trucktaxpro-filing.com/api/webhooks/resend` with all email events ticked.",
         "Its signing secret must match `RESEND_WEBHOOK_SECRET` in Vercel.",
         "Resend shows recent deliveries to that endpoint. Failures show the reason.",
+        "Opened and Clicked also need tracking switched on for the domain in Resend. See Opens, clicks and tracking.",
+        "Test emails are not counted here. Look at the Recent test emails table on the campaign page.",
       ] },
       { heading: "The dashboard says waiting for the first sync, or last sync failed", text: "See The daily sync on the server. Run `node sync.mjs --check` by hand and read the message." },
       { heading: "Emails land in spam", text: "Follow Warm up the sending domain, confirm the domain is Verified in Resend, add a DMARC record, and keep the daily number low until the results are clean." },

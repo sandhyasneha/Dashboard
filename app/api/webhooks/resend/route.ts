@@ -26,6 +26,7 @@ export async function POST(req: Request) {
   };
   if (resendId && col[type]) {
     await sb.from("messages").update({ [col[type]]: at, last_event: type.replace("email.", "") }).eq("resend_id", resendId);
+    await sb.from("test_sends").update({ [col[type]]: at, last_event: type.replace("email.", "") }).eq("resend_id", resendId);
   }
   if (to && (type === "email.bounced" || type === "email.complained")) {
     const reason = type === "email.bounced" ? "bounced" : "complained";

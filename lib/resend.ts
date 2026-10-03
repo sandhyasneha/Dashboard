@@ -27,6 +27,7 @@ function toPayload(emails: OutboundEmail[]) {
  */
 export async function sendBatchStrict(emails: OutboundEmail[]): Promise<{ ids: (string | null)[]; error: string | null }> {
   if (emails.length === 0) return { ids: [], error: null };
+  if (!process.env.EMAIL_FROM) return { ids: emails.map(() => null), error: "EMAIL_FROM is not set in Vercel (Settings, Environment Variables). Add it, for example TruckTaxPro <promo@your-verified-domain>, then redeploy." };
   const payload = toPayload(emails);
   let lastError = "Resend did not accept the emails.";
   for (let attempt = 0; attempt < 3; attempt++) {

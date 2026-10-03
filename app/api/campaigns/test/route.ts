@@ -44,6 +44,9 @@ export async function POST(req: Request) {
   }));
 
   const { ids, error } = await sendBatchStrict(emails);
+  // Remember each accepted test so the campaign page can show what Resend reports back (ignored if patch-005 has not been run).
+  const rows = emails.map((e, k) => ({ resend_id: ids[k], to_email: e.to, subject: e.subject, campaign_id: body.campaign_id ?? null })).filter((r) => r.resend_id);
+  if (rows.length) await supabaseAdmin().from("test_sends").insert(rows);
   const sent = ids.filter(Boolean).length;
   if (error || sent === 0) return NextResponse.json({ error: error ?? "Resend did not accept the emails." }, { status: 502 });
   return NextResponse.json({ ok: true, sent, failed: emails.length - sent });

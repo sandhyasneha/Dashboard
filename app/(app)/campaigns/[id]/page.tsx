@@ -6,6 +6,7 @@ import { SequenceRoad } from "@/components/SequenceRoad";
 import { TestSend } from "@/components/TestSend";
 import { centralLabel } from "@/lib/schedule";
 import { DailyLimit } from "@/components/DailyLimit";
+import { TestSendsPanel } from "@/components/TestSendsPanel";
 import { n, pct, when, titleCase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +20,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
     sb.from("messages").select("subject, sent_at, last_event, step_position, lead:leads(email, company_name, state)").eq("campaign_id", params.id).order("sent_at", { ascending: false }).limit(25),
   ]);
   if (!c) notFound();
+  const { data: tests } = await sb.from("test_sends").select("*").order("sent_at", { ascending: false }).limit(10);
   const s = stats ?? { enrolled: 0, active: 0, sent: 0, delivered: 0, opened: 0, clicked: 0, bounced: 0, converted: 0 };
 
   // Per-step counts for the road: how many enrollments have reached each step.
@@ -48,6 +50,8 @@ export default async function CampaignPage({ params }: { params: { id: string } 
         <SequenceRoad steps={(steps ?? []).map((st, i) => ({ label: i === 0 ? "First email" : `Follow-up ${i}`, subject: st.subject, delay: st.delay_days, count: perStep[i] }))} enrolled={s.enrolled} converted={s.converted} bounced={s.bounced} />
         <TestSend campaignId={c.id} steps={(steps ?? []).length} />
       </section>
+
+      <TestSendsPanel rows={(tests ?? []) as any} />
 
       <section className="panel">
         <div className="px-5 py-4 border-b border-line"><h2 className="font-semibold">Recent sends</h2></div>
