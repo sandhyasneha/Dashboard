@@ -15,11 +15,11 @@ export default async function Settings() {
     <>
       <PageHeader title="Settings" />
       <div className="grid grid-cols-[1fr_1fr] gap-6 items-start">
-        <SettingsForm dailyCap={s?.global_daily_cap ?? 800} monthlyCap={s?.monthly_cap ?? 20000} />
+        <SettingsForm dailyCap={s?.global_daily_cap ?? 700} peakCap={s?.peak_daily_cap ?? 1000} monthlyCap={s?.monthly_cap ?? 50000} />
         <div className="space-y-6">
           <section className="panel p-6">
             <h2 className="font-semibold mb-2">Production data</h2>
-            <p className="text-sm text-muted mb-3">The sync script on the server pushes users and filings every hour. Optionally, trucktaxpro.com can also call this the instant someone registers or files:</p>
+            <p className="text-sm text-muted mb-3">The sync script on the server pushes users and filings once a day. Optionally, trucktaxpro.com can also call this the instant someone registers or files:</p>
             <pre className="text-xs bg-slate rounded-md p-3 overflow-x-auto">{`POST ${webhookUrl}
 Authorization: Bearer <TTP_WEBHOOK_SECRET>
 Content-Type: application/json

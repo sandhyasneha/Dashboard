@@ -52,12 +52,13 @@ export function CampaignBuilder({ byState, byType, total }: { byState: Record<st
   const toggle = (arr: string[], set: (v: string[]) => void, v: string) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const update = (i: number, patch: Partial<Step>) => setSteps(steps.map((s, k) => (k === i ? { ...s, ...patch } : s)));
 
-  async function sendTest(i: number) {
-    setTestBusy(i); setTestMsg(null);
+  async function sendTest(which: number | "all") {
+    setTestBusy(which === "all" ? -1 : which); setTestMsg(null);
+    const what = which === "all" ? { steps: steps.map((x) => ({ subject: x.subject, body_md: x.body_md })) } : { subject: steps[which].subject, body_md: steps[which].body_md };
     try {
-      const res = await fetch("/api/campaigns/test", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: testTo, subject: steps[i].subject, body_md: steps[i].body_md }) });
+      const res = await fetch("/api/campaigns/test", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: testTo, ...what }) });
       const j = await res.json();
-      setTestMsg(res.ok ? { ok: true, text: `Test sent to ${testTo}. Check your inbox and spam folder.` } : { ok: false, text: j.error ?? "Could not send the test." });
+      setTestMsg(res.ok ? { ok: true, text: `Sent ${j.sent} test email${j.sent === 1 ? "" : "s"}. Check your inbox and spam folder.` } : { ok: false, text: j.error ?? "Could not send the test." });
     } catch { setTestMsg({ ok: false, text: "Could not reach the server." }); }
     setTestBusy(null);
   }
@@ -112,10 +113,13 @@ export function CampaignBuilder({ byState, byType, total }: { byState: Record<st
           <div className="flex items-center justify-between mb-1"><h2 className="font-semibold">2. What you send</h2>
             <button type="button" className="btn-secondary h-8" onClick={() => setSteps([...steps, { subject: "", body_md: "", delay_days: 5 }])}>Add a follow-up</button></div>
           <p className="text-sm text-muted mb-4">Use <code>{"{{company}}"}</code>, <code>{"{{state}}"}</code>, <code>{"{{power_units}}"}</code>, <code>{"{{fleet_type}}"}</code>. A blank line starts a new paragraph; **bold** and [links](https://…) work. The unsubscribe footer is added automatically.</p>
-          <div className="flex flex-wrap items-center gap-3 mb-5 p-3 bg-slate rounded-md">
-            <label className="text-sm font-medium" htmlFor="testto">Test address</label>
-            <input id="testto" type="email" className="input w-64 h-9" placeholder="you@example.com" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
-            <span className="text-xs text-muted">Then press &ldquo;Send test&rdquo; on any email below.</span>
+          <div className="mb-5 p-3 bg-slate rounded-md">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm font-medium" htmlFor="testto">Test addresses</label>
+              <input id="testto" type="text" className="input w-80 h-9" placeholder="you@example.com, other@example.com" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
+              <button type="button" className="btn-secondary h-9" disabled={!testTo.trim() || steps.some((x) => !x.subject || !x.body_md) || testBusy !== null} onClick={() => sendTest("all")}>{testBusy === -1 ? "Sending…" : `Send all ${steps.length} test email${steps.length > 1 ? "s" : ""}`}</button>
+            </div>
+            <p className="text-xs text-muted mt-2">Up to 5 addresses, separated by commas. Press &ldquo;Send test&rdquo; on one email below, or send the whole sequence at once. Works any day and hour.</p>
           </div>
           {testMsg && <p className={`text-sm mb-4 ${testMsg.ok ? "text-sign" : "text-brick"}`}>{testMsg.text}</p>}
           <div className="space-y-5">{steps.map((s, i) => (
@@ -150,7 +154,7 @@ export function CampaignBuilder({ byState, byType, total }: { byState: Record<st
 
         <label className="label" htmlFor="cap">Emails per day</label>
         <input id="cap" type="number" min={1} className="input mb-1" value={cap} onChange={(e) => setCap(+e.target.value)} />
-        <p className="text-xs text-muted mb-5">Start low on a new sending domain and raise it each week. The limits in Settings still apply on top.</p>
+        <p className="text-xs text-muted mb-5">Start low on a new sending domain and raise it each week. The overall daily limit (700, or 1,000 in May to July) always applies on top.</p>
         <dl className="text-sm space-y-2 mb-5">
           <div className="flex justify-between"><dt className="text-muted">Contacts (approx.)</dt><dd className="font-semibold">{estimate.toLocaleString()}</dd></div>
           <div className="flex justify-between"><dt className="text-muted">Emails in sequence</dt><dd>{steps.length}</dd></div>

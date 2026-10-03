@@ -34,7 +34,7 @@ export const KB: KbArticle[] = [
         "Watch the results on the campaign page: delivered, opened, clicked, bounced. People who file drop out automatically after the next daily sync.",
       ] },
       { heading: "Before the first real send", steps: [
-        "Send a test of every email to yourself and check the inbox and spam folder.",
+        "Send a test of every email to yourself and check the inbox and spam folder. You can send the whole sequence to up to 5 addresses at once.",
         "Click the unsubscribe link in a test to confirm it works (see the guide on unsubscribes to undo it).",
         "Set a low Emails per day. See Warm up the sending domain.",
       ] },
@@ -110,7 +110,7 @@ export const KB: KbArticle[] = [
       { heading: "The sending rules", steps: [
         "Emails go out on weekdays between 9 AM and 5 PM Central only. A time outside that starts at the next opening.",
         "A check runs every 15 minutes. Each run sends a slice of the daily limit, so sending spreads across the day.",
-        "Three limits apply: Emails per day on the campaign, plus the daily and monthly limits in Settings (defaults 800 and 20,000).",
+        "Three limits apply: Emails per day on the campaign, plus the daily and monthly limits in Settings. The daily limit is 700, or 1,000 in May, June and July. The monthly limit is 50,000.",
         "Follow-ups wait the set number of days, then go out at the next opening.",
       ] },
       { heading: "Controls on a campaign page", steps: [
@@ -119,6 +119,25 @@ export const KB: KbArticle[] = [
         "End stops the campaign for good. Remaining emails are not sent.",
       ] },
       { heading: "Time zones", note: "Central is 10.5 hours behind Chennai while daylight saving lasts, so 9 AM Central is 7:30 PM in Chennai. After the clocks change on 1 November it is 11.5 hours, so 9 AM Central is 8:30 PM in Chennai." },
+    ],
+  },
+  {
+    slug: "sending-limits", group: "Campaigns", title: "How sending works and the limits",
+    summary: "The queue, the daily limits and Resend's limits.",
+    sections: [
+      { heading: "Sending is a queue, not a blast", text: "Pressing Start sending never sends anything by itself. It enrolls the contacts. A worker then runs every 15 minutes on weekdays during the sending hours and sends a small slice (about 22 emails at 700 a day) in one Resend batch request, which can carry up to 100 emails. If a send fails, those emails stay due and are retried on the next run." },
+      { heading: "Our limits", steps: [
+        "700 emails a day, all campaigns together. In May, June and July the limit is 1,000 a day. Both are in Settings.",
+        "50,000 emails a month, which matches the Resend plan. On a paid plan Resend bills extra emails rather than blocking them, but the app stops at the monthly number in Settings.",
+        "Each campaign also has its own Emails per day. It can only lower the daily limit, never raise it.",
+      ] },
+      { heading: "Resend's own limits", steps: [
+        "Resend limits API requests per second for the whole account. The default has been between 2 and 10 a second depending on the account, and Settings, then Usage, in Resend shows yours. It does not limit emails per minute.",
+        "One batch request carries up to 100 emails and counts as a single request, so the app stays far below the limit.",
+        "If Resend answers that the account is rate limited, the app waits and retries, and otherwise tries again on the next 15-minute run.",
+        "A send that Resend did not accept is never counted as sent and never uses up the daily limit.",
+      ] },
+      { heading: "Test emails", text: "Test emails go straight out in one batch request, any day and hour. They are not part of the queue and do not count toward the daily limit." },
     ],
   },
   {
@@ -131,7 +150,7 @@ export const KB: KbArticle[] = [
         "Week 2: 100 a day.",
         "Week 3: 200 a day.",
         "Week 4: 400 a day.",
-        "Week 5 onward: 700 to 800 a day, only if the earlier weeks were healthy.",
+        "Week 5 onward: up to 700 a day, only if the earlier weeks were healthy. 700 is the ceiling all year. Only May, June and July allow 1,000, set in Settings.",
       ] },
       { heading: "How to change the pace", steps: [
         "Open the campaign and change Emails per day in the box under the title, then Save limit.",
@@ -220,7 +239,7 @@ Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
 git commit -m "Describe the change"
 git push` },
       { heading: "Good to know", steps: [
-        "SQL files so far: `patch-002.sql` (audiences and counts), `patch-003.sql` (scheduling). Each is safe to run again.",
+        "SQL files so far: `patch-002.sql` (audiences and counts), `patch-003.sql` (scheduling), `patch-004.sql` (daily limits of 700 and 1,000). Each is safe to run again.",
         "The sync scripts live on the server in `C:\\trucktaxpro-sync`, not in Vercel. Updating them means copying files there.",
       ] },
     ],

@@ -18,3 +18,7 @@ export function nextOpening(from: Date) {
 
 export const centralLabel = (d: Date) =>
   d.toLocaleString("en-US", { timeZone: TZ, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + " Central";
+
+/** Months (1 to 12, Central time) that get the higher daily limit: May, June, July. */
+export const PEAK_MONTHS = [5, 6, 7];
+export const centralMonth = (d: Date) => Number(new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "numeric" }).format(d));

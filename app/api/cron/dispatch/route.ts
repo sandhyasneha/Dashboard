@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireCron } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import { sendBatch, type OutboundEmail } from "@/lib/resend";
+import { sendBatchStrict, type OutboundEmail } from "@/lib/resend";
+import { PEAK_MONTHS, centralMonth } from "@/lib/schedule";
 import { fill, renderHtml, renderText, unsubscribeToken } from "@/lib/template";
 
 export const maxDuration = 300;
@@ -26,13 +27,17 @@ export async function GET(req: Request) {
     sb.from("sends_today").select("n").single(),
     sb.from("sends_this_month").select("n").single(),
   ]);
-  const remainingToday = (settings?.global_daily_cap ?? 800) - (today?.n ?? 0);
-  const remainingMonth = (settings?.monthly_cap ?? 20000) - (month?.n ?? 0);
+  // 700 a day normally; 1,000 in the peak months (May, June, July). Both are set in Settings.
+  const peak = PEAK_MONTHS.includes(centralMonth(new Date()));
+  const dailyCap = peak ? (settings?.peak_daily_cap ?? 1000) : (settings?.global_daily_cap ?? 700);
+  const remainingToday = dailyCap - (today?.n ?? 0);
+  const remainingMonth = (settings?.monthly_cap ?? 50000) - (month?.n ?? 0);
   let budget = Math.max(0, Math.min(remainingToday, remainingMonth));
   if (budget === 0) return NextResponse.json({ skipped: "cap reached" });
 
   const { data: campaigns } = await sb.from("campaigns").select("*").eq("status", "running");
   const report: Record<string, number> = {};
+  let runFailed = false;
   const startOfDay = new Date(); startOfDay.setUTCHours(0, 0, 0, 0);
 
   for (const c of campaigns ?? []) {
@@ -86,11 +91,18 @@ export async function GET(req: Request) {
         });
       }
       if (!outbound.length) continue;
-      const ids = await sendBatch(outbound.map((o) => o.email));
-      await sb.from("messages").insert(outbound.map((o, k) => ({
+      const { ids, error: sendError } = await sendBatchStrict(outbound.map((o) => o.email));
+      // Record only what Resend accepted, so a failed batch never uses up the daily limit or shows as sent.
+      // Anything not accepted stays due and is tried again on the next run.
+      const accepted = outbound.map((o, k) => ({ o, id: ids[k] })).filter((x) => x.id);
+      if (accepted.length) await sb.from("messages").insert(accepted.map(({ o, id }) => ({
         enrollment_id: o.enrollmentId, campaign_id: c.id, lead_id: o.leadId, step_position: o.pos,
-        resend_id: ids[k], subject: o.email.subject, last_event: ids[k] ? "sent" : "failed",
+        resend_id: id, subject: o.email.subject, last_event: "sent",
       })));
+      if (sendError) {
+        await sb.from("email_events").insert({ type: "dispatch.batch_failed", payload: { campaign: c.id, not_sent: outbound.length - accepted.length, error: sendError } });
+        runFailed = true;
+      }
       for (const [k, o] of outbound.entries()) {
         if (!ids[k]) continue;
         const next = steps.find((s) => s.position === o.pos + 1);
@@ -102,12 +114,14 @@ export async function GET(req: Request) {
         }).eq("id", o.enrollmentId);
         sentHere++;
       }
+      if (runFailed) break;
+      await new Promise((r) => setTimeout(r, 600)); // stay well under Resend's requests-per-second limit
     }
     budget -= sentHere; report[c.name] = sentHere;
 
     const { count: stillActive } = await sb.from("enrollments").select("id", { count: "exact", head: true }).eq("campaign_id", c.id).eq("status", "active");
     if ((stillActive ?? 0) === 0) await sb.from("campaigns").update({ status: "completed" }).eq("id", c.id);
-    if (budget <= 0) break;
+    if (runFailed || budget <= 0) break;
   }
-  return NextResponse.json({ sent: report });
+  return NextResponse.json({ sent: report, ...(runFailed ? { warning: "Resend rejected a batch. Those emails will be retried on the next run." } : {}) });
 }
