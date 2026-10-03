@@ -16,6 +16,9 @@ const sections = [
     { href: "/customers", label: "Converted" },
     { href: "/settings", label: "Settings" },
   ]},
+  { title: "Help", items: [
+    { href: "/kb", label: "KB" },
+  ]},
 ];
 
 export function Nav({ email }: { email: string }) {

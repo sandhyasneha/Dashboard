@@ -1,0 +1,291 @@
+// The KB: step-by-step guides shown inside the admin. Edit this file to change them.
+// Inline `code` uses backticks. No secrets belong here: names of settings only, never values.
+
+export type KbSection = { heading: string; text?: string; steps?: string[]; code?: string; note?: string };
+export type KbArticle = { slug: string; group: string; title: string; summary: string; sections: KbSection[] };
+
+export const KB_GROUPS = ["Start here", "Campaigns", "Dashboard and data", "Server and deployment", "Fix it"];
+
+export const KB: KbArticle[] = [
+  {
+    slug: "overview", group: "Start here", title: "How everything fits together",
+    summary: "The moving parts and what feeds what.",
+    sections: [
+      { heading: "The big picture", text: "This admin only reads copies of your production data. It never writes to the TruckTaxPro database. Everything it knows arrives through one daily sync." },
+      { heading: "The parts", steps: [
+        "Production (the InterServer server): SQL Server instance `localhost\\SQLEXPRESS` with the databases `TruckTaxPro` (users, filings, revenue) and `TruckTaxEmailCenterDb` (the contacts in `EmailMarketingCustomers`). `TrucktaxproDb` is not used.",
+        "The daily sync (on that server, folder `C:\\trucktaxpro-sync`): runs at 6:00 AM server time, reads production and copies it to Supabase. It also adds new registrants to `EmailMarketingCustomers`.",
+        "Supabase: the reporting copy (users, filings), the leads, the campaigns and the send history.",
+        "This admin app (Vercel, trucktaxpro-filing.com): the dashboard and the campaign tools.",
+        "Resend: sends the emails and reports delivered, opened, clicked and bounced back to this app.",
+      ] },
+      { heading: "Who receives campaign emails", text: "The audience is the contacts in `EmailMarketingCustomers`, loaded into the app as leads by the daily sync. Contacts who registered on trucktaxpro.com are marked as customers and skipped by prospect campaigns." },
+      { heading: "How fresh is the data?", text: "The dashboard shows data as of the last sync, written under the page title. A new registration or filing appears the next morning." },
+    ],
+  },
+  {
+    slug: "send-in-3-steps", group: "Start here", title: "Send a campaign in 3 steps",
+    summary: "The whole routine on one page.",
+    sections: [
+      { heading: "The routine", steps: [
+        "Add leads. Leads, then Import a file for a new list. Your existing contacts arrive by themselves with the daily sync, so you usually skip this.",
+        "Create the campaign. Campaigns, then New campaign. Choose who gets it, edit the emails, and use Send test to see each email in your own inbox.",
+        "Send now or schedule. On the right, choose Send now, Schedule for later (pick a date and time), or Save as draft, then press the button and confirm.",
+        "Watch the results on the campaign page: delivered, opened, clicked, bounced. People who file drop out automatically after the next daily sync.",
+      ] },
+      { heading: "Before the first real send", steps: [
+        "Send a test of every email to yourself and check the inbox and spam folder.",
+        "Click the unsubscribe link in a test to confirm it works (see the guide on unsubscribes to undo it).",
+        "Set a low Emails per day. See Warm up the sending domain.",
+      ] },
+      { note: "Emails only go out on weekdays between 9 AM and 5 PM Central, whatever time you schedule." , heading: "Remember" },
+    ],
+  },
+  {
+    slug: "import-leads", group: "Campaigns", title: "Import leads from a file",
+    summary: "Add contacts from an Excel or CSV file.",
+    sections: [
+      { heading: "Steps", steps: [
+        "Leads, then Import a file.",
+        "Drag the file onto the box or choose it. .xlsx and .csv both work.",
+        "Check the preview. The line Columns found should list the columns you expect.",
+        "Click Import these leads. A bar shows progress; files upload 500 rows at a time.",
+        "Read the Result panel: new leads, already on file (refreshed), skipped (suppressed).",
+      ] },
+      { heading: "Columns it understands", text: "Contact Email (required), Company Name, Phone Number, Fleet Type, Carrier Type, Power Units, State and USDOT Number. The FMCSA names `EMAIL_ADDRESS`, `LEGAL_NAME`, `TELEPHONE`, `NBR_POWER_UNIT`, `PHY_STATE` and `DOT_NUMBER` also work." },
+      { heading: "Good to know", steps: [
+        "Re-importing is safe. Contacts are matched by email, so they are updated, never duplicated, and keep their status.",
+        "Addresses that unsubscribed, bounced or complained are skipped.",
+        "Your existing customers do not need importing. The daily sync loads them.",
+        "For very large files, import one state at a time. The file is read in your browser.",
+      ] },
+    ],
+  },
+  {
+    slug: "create-campaign", group: "Campaigns", title: "Create a campaign",
+    summary: "Audience, emails, pace and timing.",
+    sections: [
+      { heading: "Steps", steps: [
+        "Campaigns, then New campaign. Give it a name.",
+        "1. Who gets it. Click states or contact types to narrow it, or leave them all unselected for everyone. Leave the truck range blank to include contacts whose truck count is unknown. Use Only the first to roll out in batches.",
+        "2. What you send. Edit the first email and the follow-ups. Each follow-up waits the number of days you set after the previous one. Use the test box to send each email to yourself.",
+        "3. When to send. Choose Send now, Schedule for later or Save as draft. Set Emails per day.",
+        "Press the button at the bottom right. For Send now and Schedule you are asked to confirm the numbers.",
+      ] },
+      { heading: "Placeholders", text: "`{{company}}`, `{{state}}`, `{{power_units}}` and `{{fleet_type}}` are replaced for each contact. When a value is unknown, state and trucks are left blank and company reads Your Company, so keep placeholders out of the greeting for contacts without data. The unsubscribe footer is added to every email automatically." },
+      { heading: "Who leaves a campaign", steps: [
+        "Anyone who unsubscribes, bounces or complains, immediately.",
+        "Prospect campaigns: a contact who registers on trucktaxpro.com (after the next daily sync).",
+        "Renewal campaigns: a customer who completes a return for the target tax year.",
+      ] },
+      { heading: "Rules", note: "A contact can be in only one campaign at a time, and only contacts with status new are enrolled." },
+    ],
+  },
+  {
+    slug: "test-email", group: "Campaigns", title: "Send a test email",
+    summary: "See exactly what a contact will receive.",
+    sections: [
+      { heading: "Two places", steps: [
+        "While building: type your address in Test address under 2. What you send, then press Send test on any email.",
+        "On a saved campaign: scroll to the bottom of the Sequence box, choose the email, type your address and press Send test.",
+      ] },
+      { heading: "What to check", steps: [
+        "It arrives, and in the inbox rather than spam.",
+        "It reads well on a phone and the links open trucktaxpro.com.",
+        "The unsubscribe link works.",
+        "Replying lands in the reply-to mailbox.",
+      ] },
+      { heading: "Good to know", note: "Tests use sample values for the placeholders and the subject starts with [TEST]. They enroll nobody, are not counted in the campaign numbers, and work any day and hour. Clicking Unsubscribe in a test adds that address to the suppression list." },
+    ],
+  },
+  {
+    slug: "schedule-and-rules", group: "Campaigns", title: "Send now, schedule, and the sending rules",
+    summary: "When emails really go out.",
+    sections: [
+      { heading: "Three choices", steps: [
+        "Send now: the campaign starts at the next sending opening.",
+        "Schedule for later: pick a date and time in your computer's time zone. The page shows the same moment in Central time.",
+        "Save as draft: nothing sends until you press Start now or Schedule on the campaign page.",
+      ] },
+      { heading: "The sending rules", steps: [
+        "Emails go out on weekdays between 9 AM and 5 PM Central only. A time outside that starts at the next opening.",
+        "A check runs every 15 minutes. Each run sends a slice of the daily limit, so sending spreads across the day.",
+        "Three limits apply: Emails per day on the campaign, plus the daily and monthly limits in Settings (defaults 800 and 20,000).",
+        "Follow-ups wait the set number of days, then go out at the next opening.",
+      ] },
+      { heading: "Controls on a campaign page", steps: [
+        "Start now, Schedule or Reschedule, Cancel schedule (back to draft).",
+        "Pause and Resume.",
+        "End stops the campaign for good. Remaining emails are not sent.",
+      ] },
+      { heading: "Time zones", note: "Central is 10.5 hours behind Chennai while daylight saving lasts, so 9 AM Central is 7:30 PM in Chennai. After the clocks change on 1 November it is 11.5 hours, so 9 AM Central is 8:30 PM in Chennai." },
+    ],
+  },
+  {
+    slug: "warm-up", group: "Campaigns", title: "Warm up the sending domain",
+    summary: "How to ramp up without landing in spam.",
+    sections: [
+      { heading: "Why", text: "A new sending domain has no reputation. Sending a lot at once makes inbox providers treat it as spam, and that is hard to undo." },
+      { heading: "The ramp", steps: [
+        "Week 1: 50 emails a day.",
+        "Week 2: 100 a day.",
+        "Week 3: 200 a day.",
+        "Week 4: 400 a day.",
+        "Week 5 onward: 700 to 800 a day, only if the earlier weeks were healthy.",
+      ] },
+      { heading: "How to change the pace", steps: [
+        "Open the campaign and change Emails per day in the box under the title, then Save limit.",
+        "Make sure the daily limit in Settings is at least as high.",
+        "Change it once a week, not daily.",
+      ] },
+      { heading: "Health checks", steps: [
+        "In Resend, keep bounces under 2% and complaints under 0.1%. If either goes higher, pause the campaign and tell us.",
+        "In Resend, Domains must show Verified. Add a DMARC record at the domain's DNS.",
+        "Never send to addresses that bounced or unsubscribed. The app already skips them.",
+      ] },
+      { heading: "Batches", note: "Use Only the first when creating a campaign to roll out to a part of the audience, then make the next campaign for the rest." },
+    ],
+  },
+  {
+    slug: "renewals", group: "Campaigns", title: "Renewal campaigns for returning customers",
+    summary: "Customers who filed last tax year but not this one.",
+    sections: [
+      { heading: "Steps", steps: [
+        "Dashboard, then Retention. The list shows customers who completed a return last tax year but not yet this year.",
+        "Use Download CSV if you want the list in Excel.",
+        "Press Start renewal campaign. It creates a draft with three emails and enrolls the customers who are not already in a sequence.",
+        "Open the campaign, send yourself a test, then press Start now or Schedule.",
+      ] },
+      { heading: "How people drop out", text: "A customer leaves the campaign as soon as they complete a return for this tax year. This is checked before every email and at each daily sync." },
+      { heading: "Good to know", note: "This depends on filing history in production. Until older filings are available to the sync, the list will be short." },
+    ],
+  },
+  {
+    slug: "dashboard-numbers", group: "Dashboard and data", title: "What the dashboard numbers mean",
+    summary: "Definitions, so everyone reads them the same way.",
+    sections: [
+      { heading: "Definitions", steps: [
+        "Completed return: a filing whose status is Completed (status 4).",
+        "Month of a return: the month the return was marked completed (its modified date).",
+        "Revenue: TruckTaxPro's service fee only (`ServiceFeeAmount`), not the IRS tax collected.",
+        "Tax year: TY2026-27 means the tax period 1 July 2026 to 30 June 2027. The year shown is the active period.",
+        "Registrations: users by the date they signed up (`UserMaster.CreatedDate`). Deleted users are left out.",
+        "Became customers: contacts from your lists whose email now exists as a registered user.",
+      ] },
+      { heading: "Freshness", text: "Numbers are as of the last daily sync, shown under the page title. If it says the last sync failed, see the sync guide." },
+      { heading: "Comparing years", text: "Charts show the active tax year beside the previous one, month by month, July to June." },
+    ],
+  },
+  {
+    slug: "sync-server", group: "Server and deployment", title: "The daily sync on the server",
+    summary: "What it does, how to run it, and how to read the result.",
+    sections: [
+      { heading: "What it does", text: "Reads production on the server and copies users, filings and the contact list to Supabase. It adds new registrants to `EmailMarketingCustomers`. It never writes to the `TruckTaxPro` database." },
+      { heading: "Where and when", steps: [
+        "Folder `C:\\trucktaxpro-sync` on the server.",
+        "Windows Task Scheduler task `TruckTaxPro Sync`, daily at 6:00 AM server time, running as SYSTEM.",
+        "The server's own backups run at 2:00 AM, so they never overlap.",
+      ] },
+      { heading: "Run it or check it by hand", code: String.raw`cd C:\trucktaxpro-sync
+node sync.mjs --check        (read-only: proves the connection works)
+npm run sync                 (runs a full sync now)
+Start-ScheduledTask -TaskName "TruckTaxPro Sync"
+Get-ScheduledTaskInfo -TaskName "TruckTaxPro Sync" | Select LastRunTime, LastTaskResult, NextRunTime` },
+      { heading: "Reading the task result", steps: [
+        "0: it worked.",
+        "267009: it is still running. Wait a minute and check again.",
+        "2147942402 (0x80070002): Windows could not start the program. The path to node needs quotes. Run the fix below.",
+        "1: the sync started and failed. Run `node sync.mjs` by hand to see the message.",
+      ] },
+      { heading: "Fix for 0x80070002", code: String.raw`$node = '"' + (Get-Command node).Source + '"'
+$a = New-ScheduledTaskAction -Execute $node -Argument "sync.mjs" -WorkingDirectory "C:\trucktaxpro-sync"
+Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
+      { heading: "Settings in the sync's .env file (names only)", text: "`MSSQL_SERVER` (`localhost\\SQLEXPRESS`), `MSSQL_MODE` (`local`), `MSSQL_USER` (`sync_user`), `MSSQL_PASSWORD`, `MSSQL_PROD_DB`, `MSSQL_EMAILCENTER_DB`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Never paste the values into chats or tickets. The folder is locked to SYSTEM and Administrators." },
+      { heading: "Why it uses local mode", text: "TCP/IP is switched off on this SQL Server. The only network listener (port 49679) is SQL Server's admin-only connection, which refuses normal logins. So the sync reads through shared memory with Windows PowerShell (`sqlquery.ps1`), the same route SSMS uses on the server.", note: "Do not turn on TCP/IP or restart SQL Server for this, and never give `sync_user` sysadmin rights." },
+      { heading: "What the login can do", text: "`sync_user` can read seven tables in `TruckTaxPro` (not password columns) and read and add rows in `EmailMarketingCustomers`. Nothing else." },
+    ],
+  },
+  {
+    slug: "deploy-changes", group: "Server and deployment", title: "Deploy a change",
+    summary: "From a zip file to the live site.",
+    sections: [
+      { heading: "Steps", steps: [
+        "Extract the zip into the project folder `C:\\Users\\chan2\\DASHBOARD\\trucktaxpro-admin\\trucktaxpro-campaigns` and choose Replace when asked.",
+        "If the update includes a new SQL file in the `supabase` folder, run it in the Supabase SQL editor first (copy the whole file, paste, Run).",
+        "Push the change with the commands below.",
+        "In Vercel, open Deployments and wait until the newest one says Ready. If it says Error, open it and read the message.",
+        "Reload the site with Ctrl+F5.",
+      ] },
+      { heading: "Commands", code: String.raw`git add .
+git commit -m "Describe the change"
+git push` },
+      { heading: "Good to know", steps: [
+        "SQL files so far: `patch-002.sql` (audiences and counts), `patch-003.sql` (scheduling). Each is safe to run again.",
+        "The sync scripts live on the server in `C:\\trucktaxpro-sync`, not in Vercel. Updating them means copying files there.",
+      ] },
+    ],
+  },
+  {
+    slug: "environment", group: "Server and deployment", title: "Settings (environment variables)",
+    summary: "What each Vercel setting is for. Names only.",
+    sections: [
+      { heading: "Where", text: "Vercel, then the project, Settings, Environment Variables. After changing one, redeploy. Settings starting with `NEXT_PUBLIC_` are fixed at build time, so they need a redeploy." },
+      { heading: "The list", steps: [
+        "`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`: the Supabase project. The service role key is private.",
+        "`RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`: sending and the delivery-event webhook.",
+        "`EMAIL_FROM`, `EMAIL_REPLY_TO`: who the email is from and where replies go.",
+        "`NEXT_PUBLIC_APP_URL`: this site's address. Unsubscribe links are built from it.",
+        "`ADMIN_EMAILS`: the only addresses allowed to sign in.",
+        "`CRON_SECRET`: protects the 15-minute sender. `UNSUBSCRIBE_SECRET`: signs unsubscribe links.",
+        "`COMPANY_POSTAL_ADDRESS`: printed in every email footer (required by law).",
+        "`EMAIL_FOOTER_REASON` (optional): the line explaining why they receive the email.",
+      ] },
+    ],
+  },
+  {
+    slug: "unsubscribes", group: "Campaigns", title: "Unsubscribes, bounces and the suppression list",
+    summary: "Who is never emailed, and how to undo it for a test address.",
+    sections: [
+      { heading: "How it works", steps: [
+        "Every email has an unsubscribe link and a one-click header. Using either adds the address to the suppression list.",
+        "Bounces and spam complaints reported by Resend are added automatically.",
+        "Imports skip suppressed addresses, and the sender never emails them.",
+      ] },
+      { heading: "Remove a test address", steps: [
+        "Supabase, then Table Editor, then `suppressions`. Delete the row for that address.",
+        "Run the SQL below to make the contact eligible again.",
+      ], code: "update leads set status = 'new', updated_at = now() where email = 'test@example.com';" },
+      { heading: "Be careful", note: "Only restore addresses that asked to come back, such as your own tests. Emailing someone who unsubscribed breaks the law (CAN-SPAM) and damages deliverability." },
+    ],
+  },
+  {
+    slug: "troubleshooting", group: "Fix it", title: "Troubleshooting",
+    summary: "The usual problems and where to look.",
+    sections: [
+      { heading: "I cannot sign in", steps: [
+        "The login page now says why. \"Did not accept the session\": the Supabase URL or anon key in Vercel is from a different project than the admin user. Fix them and redeploy.",
+        "\"Not listed in ADMIN_EMAILS\": correct that setting exactly and redeploy.",
+        "Wrong password: Supabase, Authentication, Users, reset it.",
+        "Try a private window to rule out an old cookie.",
+      ] },
+      { heading: "A campaign is running but nothing is sending", steps: [
+        "Is it a weekday between 9 AM and 5 PM Central? Outside that nothing goes out.",
+        "Is the status running? Scheduled, paused and draft campaigns do not send.",
+        "Does the campaign show contacts still active?",
+        "Check the three limits: Emails per day on the campaign, and the daily and monthly limits in Settings.",
+        "Send yourself a test. If it fails, the message names the Resend problem (domain not verified, bad key).",
+        "Run the sender by hand and read its answer with the command below.",
+      ], code: String.raw`curl.exe -H "Authorization: Bearer <CRON_SECRET>" https://trucktaxpro-filing.com/api/cron/dispatch`, note: "The answer is {\"sent\":{...}} when emails went out, or {\"skipped\":\"weekend\"} or {\"skipped\":\"cap reached\"} with the reason." },
+      { heading: "Delivered, opened and clicked stay at zero", steps: [
+        "In Resend, Webhooks, the endpoint must be `https://trucktaxpro-filing.com/api/webhooks/resend` with all email events ticked.",
+        "Its signing secret must match `RESEND_WEBHOOK_SECRET` in Vercel.",
+        "Resend shows recent deliveries to that endpoint. Failures show the reason.",
+      ] },
+      { heading: "The dashboard says waiting for the first sync, or last sync failed", text: "See The daily sync on the server. Run `node sync.mjs --check` by hand and read the message." },
+      { heading: "Emails land in spam", text: "Follow Warm up the sending domain, confirm the domain is Verified in Resend, add a DMARC record, and keep the daily number low until the results are clean." },
+      { heading: "Filings or Retention look empty", text: "Production only holds filings since the new platform went live. Older history is not in the database the sync reads, so these pages fill up as new filings arrive." },
+    ],
+  },
+];
+
+export const kbBySlug = (slug: string) => KB.find((a) => a.slug === slug);

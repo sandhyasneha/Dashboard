@@ -25,7 +25,7 @@ export function StatusPill({ status }: { status: string }) {
   const map: Record<string, string> = {
     new: "bg-slate text-ink", in_sequence: "bg-amberSoft text-amber", customer: "bg-signSoft text-sign", replied: "bg-signSoft text-sign",
     bounced: "bg-brickSoft text-brick", complained: "bg-brickSoft text-brick", unsubscribed: "bg-slate text-muted",
-    draft: "bg-slate text-ink", running: "bg-signSoft text-sign", paused: "bg-amberSoft text-amber", completed: "bg-slate text-muted",
+    draft: "bg-slate text-ink", scheduled: "bg-amberSoft text-amber", running: "bg-signSoft text-sign", paused: "bg-amberSoft text-amber", completed: "bg-slate text-muted",
   };
   const label = status.replace("_", " ");
   return <span className={`pill ${map[status] ?? "bg-slate text-ink"}`}>{label}</span>;

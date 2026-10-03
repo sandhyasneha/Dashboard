@@ -13,6 +13,9 @@ export async function GET(req: Request) {
   const sb = supabaseAdmin();
   const app = process.env.NEXT_PUBLIC_APP_URL!;
 
+  // Campaigns scheduled for a time that has now arrived start sending (the window and caps below still apply).
+  await sb.from("campaigns").update({ status: "running", scheduled_at: null }).eq("status", "scheduled").lte("scheduled_at", new Date().toISOString());
+
   // Central time covers TX/IL/IN; CA/GA/OH land within two hours either side.
   const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: "America/Chicago" }).format(new Date()));
   const dow = new Date().getUTCDay();

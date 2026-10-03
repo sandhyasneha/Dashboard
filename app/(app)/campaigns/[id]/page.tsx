@@ -3,6 +3,9 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { PageHeader, Stat, StatusPill } from "@/components/ui";
 import { CampaignControls } from "@/components/CampaignControls";
 import { SequenceRoad } from "@/components/SequenceRoad";
+import { TestSend } from "@/components/TestSend";
+import { centralLabel } from "@/lib/schedule";
+import { DailyLimit } from "@/components/DailyLimit";
 import { n, pct, when, titleCase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -26,8 +29,10 @@ export default async function CampaignPage({ params }: { params: { id: string } 
 
   return (
     <>
-      <PageHeader title={c.name} sub={`Created ${when(c.created_at)} · up to ${n(c.daily_cap)} emails a day`}
+      <PageHeader title={c.name} sub={`Created ${when(c.created_at)} · up to ${n(c.daily_cap)} emails a day${c.status === "scheduled" && c.scheduled_at ? ` · starts ${centralLabel(new Date(c.scheduled_at))}` : ""}`}
         action={<div className="flex items-center gap-3"><StatusPill status={c.status} /><CampaignControls id={c.id} status={c.status} /></div>} />
+
+      {c.status !== "completed" && <DailyLimit id={c.id} value={c.daily_cap} />}
 
       <div className="grid grid-cols-5 gap-4 mb-8">
         <Stat label="Enrolled" value={s.enrolled} sub={`${n(s.active)} still active`} />
@@ -41,6 +46,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
         <h2 className="font-semibold mb-1">Sequence</h2>
         <p className="text-sm text-muted mb-6">Carriers move along the road; anyone who files on trucktaxpro.com exits early.</p>
         <SequenceRoad steps={(steps ?? []).map((st, i) => ({ label: i === 0 ? "First email" : `Follow-up ${i}`, subject: st.subject, delay: st.delay_days, count: perStep[i] }))} enrolled={s.enrolled} converted={s.converted} bounced={s.bounced} />
+        <TestSend campaignId={c.id} steps={(steps ?? []).length} />
       </section>
 
       <section className="panel">
@@ -50,7 +56,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
             <tbody>{recent.map((m: any, i: number) => (
               <tr key={i}><td className="font-medium">{titleCase(m.lead?.company_name) || "—"} <span className="text-muted">{m.lead?.state}</span></td><td className="text-muted">{m.lead?.email}</td><td>{m.step_position}</td>
                 <td className="text-muted max-w-xs truncate">{m.subject}</td><td><StatusPill status={m.last_event === "bounced" || m.last_event === "complained" ? "bounced" : m.last_event === "opened" || m.last_event === "clicked" ? "customer" : "new"} /> <span className="text-xs text-muted">{m.last_event}</span></td><td className="text-muted whitespace-nowrap">{when(m.sent_at)}</td></tr>))}</tbody></table>
-        ) : <p className="px-5 py-8 text-sm text-muted">{c.status === "draft" ? "Start the campaign to begin sending. The first batch goes out within 15 minutes, during the send window." : "Nothing sent yet."}</p>}
+        ) : <p className="px-5 py-8 text-sm text-muted">{c.status === "draft" ? "Start the campaign or schedule it to begin sending. Emails go out within 15 minutes, during the send window (weekdays, 9 AM to 5 PM Central)." : c.status === "scheduled" ? "Scheduled. Nothing is sent until the start time." : "Nothing sent yet."}</p>}
       </section>
     </>
   );
