@@ -30,7 +30,8 @@ export default function Login() {
   return (
     <div className="min-h-screen grid place-items-center px-4">
       <form onSubmit={submit} className="panel w-full max-w-sm p-8">
-        <div className="flex items-center gap-2.5 mb-6"><span className="inline-block w-7 h-7 rounded-[3px] bg-sign" /><span className="font-bold">TruckTaxPro Admin</span></div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/logo.png" alt="TruckTaxPro" className="w-full h-auto rounded-md block mb-6" />
         {notice && <p className="text-sm bg-amberSoft text-ink rounded-md p-3 mb-4">{notice}</p>}
         <label className="label" htmlFor="email">Email</label>
         <input id="email" className="input mb-4" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} />

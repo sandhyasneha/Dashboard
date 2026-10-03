@@ -25,4 +25,4 @@ export async function middleware(req: NextRequest) {
   }
   return res;
 }
-export const config = { matcher: ["/((?!_next|favicon.ico).*)"] };
+export const config = { matcher: ["/((?!_next|favicon.ico|brand/).*)"] };

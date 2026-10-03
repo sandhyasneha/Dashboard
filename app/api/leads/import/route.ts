@@ -9,7 +9,8 @@ export async function POST(req: Request) {
   const { data: u } = await supabaseServer().auth.getUser();
   if (!u.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { rows, source_file } = await req.json();
+  const body = await req.json();
+  const { rows, source_file } = body;
   if (!Array.isArray(rows)) return NextResponse.json({ error: "rows must be an array" }, { status: 400 });
 
   const pick = (r: Record<string, any>, keys: string[]) => {
@@ -17,25 +18,14 @@ export async function POST(req: Request) {
     return undefined;
   };
 
+  const listName = String(body.list_name ?? "").trim().slice(0, 60) || null;
   const seen = new Set<string>();
   const clean = rows.flatMap((r: Record<string, any>) => {
     const email = String(pick(r, ["contact email", "email", "email_address"]) ?? "").trim().toLowerCase();
     if (!EMAIL.test(email) || seen.has(email)) return [];
     seen.add(email);
-    const units = parseInt(String(pick(r, ["power units", "nbr_power_unit"]) ?? ""), 10);
-    const fleet = pick(r, ["fleet type"]) ?? null;
-    const usdot = pick(r, ["usdot number", "dot_number"]);
-    return [{
-      email,
-      company_name: pick(r, ["company name", "legal_name", "dba_name"]) ?? null,
-      phone: pick(r, ["phone number", "telephone", "phone"]) ?? null,
-      fleet_type: fleet,
-      carrier_type: pick(r, ["carrier type"]) ?? (fleet ? String(fleet).split(" - ")[0] : null),
-      power_units: Number.isFinite(units) ? units : null,
-      state: pick(r, ["state", "phy_state"]) ?? null,
-      usdot: usdot != null ? String(usdot) : null,
-      source_file: source_file ?? null,
-    }];
+    const phone = pick(r, ["phone number", "telephone", "phone"]);
+    return [{ email, phone: phone ? String(phone).trim() || null : null, carrier_type: listName, source_file: source_file ?? null }];
   });
   if (clean.length === 0) return NextResponse.json({ received: rows.length, valid: 0, suppressed: 0, inserted: 0, updated: 0 });
 

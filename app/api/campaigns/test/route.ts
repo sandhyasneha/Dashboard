@@ -49,5 +49,6 @@ export async function POST(req: Request) {
   if (rows.length) await supabaseAdmin().from("test_sends").insert(rows);
   const sent = ids.filter(Boolean).length;
   if (error || sent === 0) return NextResponse.json({ error: error ?? "Resend did not accept the emails." }, { status: 502 });
-  return NextResponse.json({ ok: true, sent, failed: emails.length - sent });
+  const warning = process.env.COMPANY_POSTAL_ADDRESS ? undefined : "Note: COMPANY_POSTAL_ADDRESS is not set in Vercel, so the footer has no postal address. Real campaigns will not send until it is added.";
+  return NextResponse.json({ ok: true, sent, failed: emails.length - sent, warning });
 }

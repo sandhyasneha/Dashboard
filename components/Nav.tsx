@@ -30,11 +30,10 @@ export function Nav({ email }: { email: string }) {
   }
   return (
     <aside className="border-r border-line bg-white flex flex-col">
-      <div className="px-6 pt-7 pb-6 border-b border-line">
-        <div className="flex items-center gap-2.5">
-          <span className="inline-block w-7 h-7 rounded-[3px] bg-sign" aria-hidden />
-          <div><div className="font-bold leading-tight">TruckTaxPro</div><div className="text-xs text-muted">Admin</div></div>
-        </div>
+      <div className="px-4 pt-6 pb-5 border-b border-line">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/logo.png" alt="TruckTaxPro" className="w-full h-auto rounded-md block" />
+        <div className="text-xs text-muted mt-2 px-1">Admin</div>
       </div>
       <nav className="px-3 py-4 flex-1">
         {sections.map((s) => (

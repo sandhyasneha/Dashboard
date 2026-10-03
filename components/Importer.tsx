@@ -12,10 +12,10 @@ export function Importer() {
   const [progress, setProgress] = useState(0);
   const [totals, setTotals] = useState<Totals | null>(null);
   const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false); const [listName, setListName] = useState("");
 
   async function load(f: File) {
-    setErr(""); setTotals(null); setFile(f);
+    setErr(""); setTotals(null); setFile(f); setListName(f.name.replace(/\.[^.]+$/, ""));
     const buf = await f.arrayBuffer();
     const wb = XLSX.read(buf, { type: "array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
@@ -28,7 +28,7 @@ export function Importer() {
     setBusy(true); setProgress(0); const t = { ...zero };
     const size = 500;
     for (let i = 0; i < rows.length; i += size) {
-      const res = await fetch("/api/leads/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rows: rows.slice(i, i + size), source_file: file.name }) });
+      const res = await fetch("/api/leads/import", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rows: rows.slice(i, i + size), source_file: file.name, list_name: listName }) });
       if (!res.ok) { setErr(`Import stopped at row ${i}: ${(await res.json()).error}`); break; }
       const r: Totals = await res.json();
       (Object.keys(t) as (keyof Totals)[]).forEach((k) => (t[k] += r[k]));
@@ -57,6 +57,11 @@ export function Importer() {
               <table className="table"><thead><tr>{headers.slice(0, 6).map((h) => <th key={h}>{h}</th>)}</tr></thead>
                 <tbody>{rows.slice(0, 5).map((r, i) => <tr key={i}>{headers.slice(0, 6).map((h) => <td key={h} className="text-muted whitespace-nowrap">{String(r[h])}</td>)}</tr>)}</tbody></table>
             </div>
+            <div className="mt-5 max-w-sm">
+              <label className="label" htmlFor="listname">List name</label>
+              <input id="listname" className="input" value={listName} onChange={(e) => setListName(e.target.value)} placeholder="for example Past customers" />
+              <p className="text-xs text-muted mt-1">You pick this name in a campaign to choose who gets it. Only the email and phone columns are kept.</p>
+            </div>
             <div className="flex items-center gap-4 mt-5">
               <button className="btn-primary" onClick={run} disabled={busy}>{busy ? "Importing…" : totals ? "Import again" : "Import these leads"}</button>
               {busy && <span className="text-sm text-muted">{progress.toLocaleString()} of {rows.length.toLocaleString()}</span>}
@@ -82,6 +87,7 @@ export function Importer() {
             <li>Emails are lower-cased and validated.</li>
             <li>A carrier already on file is refreshed, not duplicated.</li>
             <li>Unsubscribed, bounced, or complained addresses are never re-added.</li>
+            <li>Only email and phone are kept, with the list name you choose.</li>
             <li>Leads land as <strong>new</strong>; a campaign picks them up from there.</li>
           </ul>
         )}

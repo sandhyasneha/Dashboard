@@ -10,7 +10,7 @@ export function TestSend({ campaignId, steps }: { campaignId: string; steps: num
     try {
       const res = await fetch("/api/campaigns/test", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ campaign_id: campaignId, position: which === "all" ? "all" : +which, to }) });
       const j = await res.json();
-      setMsg(res.ok ? { ok: true, text: `Sent ${j.sent} test email${j.sent === 1 ? "" : "s"}. They should arrive within a minute. Check spam too.` } : { ok: false, text: j.error ?? "Could not send the test." });
+      setMsg(res.ok ? { ok: true, text: `Sent ${j.sent} test email${j.sent === 1 ? "" : "s"}. They should arrive within a minute. Check spam too.${j.warning ? " " + j.warning : ""}` } : { ok: false, text: j.error ?? "Could not send the test." });
     } catch { setMsg({ ok: false, text: "Could not reach the server." }); }
     setBusy(false);
   }

@@ -2,46 +2,37 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { centralLabel, nextOpening } from "@/lib/schedule";
+import { TEMPLATES } from "@/lib/templates";
+import { fill, renderEmail } from "@/lib/emailHtml";
+import { previewOpts } from "@/lib/brand";
 
-type Step = { subject: string; body_md: string; delay_days: number };
+type Step = { subject: string; body_md: string; delay_days: number; notes?: string };
 type Mode = "now" | "schedule" | "draft";
 
-const starter: Step[] = [
-  { subject: "Form 2290 for the 2026-27 tax period", delay_days: 0,
-    body_md: "Hi there,\n\nYou've used TruckTaxPro before, so we wanted to let you know the 2026-27 tax period (July 1, 2026 to June 30, 2027) is open for Form 2290, the Heavy Vehicle Use Tax return for vehicles of 55,000 lbs or more.\n\nVehicles first used in a month are due by the end of the following month, and the main deadline for vehicles already on the road on July 1 was August 31.\n\nFiling with TruckTaxPro takes about 10 minutes, and your stamped Schedule 1 comes back the same day: [File Form 2290 now](https://trucktaxpro.com)\n\nReply to this email if you have any questions. A real person answers." },
-  { subject: "Re: Form 2290 for the 2026-27 tax period", delay_days: 4,
-    body_md: "Quick follow-up in case the last note got buried.\n\nIf you've already filed elsewhere, ignore this. If not, the fastest way is here: [File Form 2290](https://trucktaxpro.com). You'll need your VINs, gross weights and the month each vehicle was first used, and the IRS-stamped Schedule 1 comes back the same day." },
-  { subject: "Last note about your 2290", delay_days: 7,
-    body_md: "Last message from me on this.\n\nLate Form 2290 filings can accrue IRS penalties and interest, and most DMVs won't renew plates without the stamped Schedule 1.\n\nIf you'd like it handled: [File Form 2290 with TruckTaxPro](https://trucktaxpro.com)\n\nEither way, safe travels out there." },
-];
-
 const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const monthYear = () => new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
+const sample = { company: "Sample Trucking LLC", state: "TX", power_units: 3, fleet_type: "Sample fleet", phone: null, email: "you@example.com" };
 
-export function CampaignBuilder({ byState, byType, total }: { byState: Record<string, number>; byType: Record<string, number>; total: number }) {
+export function CampaignBuilder({ byType, total }: { byType: Record<string, number>; total: number }) {
   const router = useRouter();
-  const [name, setName] = useState("2290 outreach — " + new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" }));
-  const [states, setStates] = useState<string[]>([]);
+  const first = TEMPLATES[0];
+  const [name, setName] = useState(`${first.name} — ${monthYear()}`); const [nameEdited, setNameEdited] = useState(false);
   const [types, setTypes] = useState<string[]>([]);
-  const [minU, setMinU] = useState(""); const [maxU, setMaxU] = useState(""); // blank = no limit
-  const [limit, setLimit] = useState("");                                      // blank = everyone who matches
+  const [limit, setLimit] = useState("");                    // blank = everyone who matches
   const [cap, setCap] = useState(50);
-  const [steps, setSteps] = useState<Step[]>(starter);
+  const [steps, setSteps] = useState<Step[]>(first.steps);
   const [mode, setMode] = useState<Mode>("now");
   const [sched, setSched] = useState("");
-  const [now, setNow] = useState<Date | null>(null);
+  const [now, setNow] = useState<Date | null>(null); const [origin, setOrigin] = useState("");
   const [testTo, setTestTo] = useState(""); const [testBusy, setTestBusy] = useState<number | null>(null);
   const [testMsg, setTestMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [aiBusy, setAiBusy] = useState<number | null>(null); const [aiMsg, setAiMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [preview, setPreview] = useState<number | null>(null);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
 
-  useEffect(() => setNow(new Date()), []); // after mount, so server and browser render the same HTML
+  useEffect(() => { setNow(new Date()); setOrigin(window.location.origin); }, []); // after mount, so server and browser render the same HTML
 
-  const matching = useMemo(() => {
-    if (!states.length && !types.length) return total;
-    const sum = (m: Record<string, number>, keys: string[]) => keys.reduce((x, k) => x + (m[k] ?? 0), 0);
-    if (states.length && !types.length) return sum(byState, states);
-    if (types.length && !states.length) return sum(byType, types);
-    return Math.min(sum(byState, states), sum(byType, types)); // upper bound when both are chosen
-  }, [states, types, byState, byType, total]);
+  const matching = useMemo(() => (types.length ? types.reduce((x, k) => x + (byType[k] ?? 0), 0) : total), [types, byType, total]);
   const estimate = limit && +limit > 0 ? Math.min(matching, +limit) : matching;
 
   const schedDate = sched ? new Date(sched) : null;
@@ -49,8 +40,28 @@ export function CampaignBuilder({ byState, byType, total }: { byState: Record<st
   const firstOut = startAt && !isNaN(startAt.getTime()) ? nextOpening(startAt) : null;
   const weeks = cap ? Math.ceil((estimate * steps.length) / cap / 5) : 0;
 
-  const toggle = (arr: string[], set: (v: string[]) => void, v: string) => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+  const toggle = (v: string) => setTypes(types.includes(v) ? types.filter((x) => x !== v) : [...types, v]);
   const update = (i: number, patch: Partial<Step>) => setSteps(steps.map((s, k) => (k === i ? { ...s, ...patch } : s)));
+
+  function applyTemplate(id: string) {
+    const t = TEMPLATES.find((x) => x.id === id); if (!t) return;
+    if (steps.some((s) => s.body_md.trim()) && !confirm("Replace the emails below with this template?")) return;
+    setSteps(t.steps.map((s) => ({ ...s }))); setPreview(null); setAiMsg(null);
+    if (!nameEdited) setName(`${t.name} — ${monthYear()}`);
+  }
+
+  async function writeWithAI(i: number) {
+    if (steps[i].body_md.trim() && !confirm("Replace the current text of this email with a new AI draft?")) return;
+    setAiBusy(i); setAiMsg(null);
+    try {
+      const res = await fetch("/api/ai/email", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: steps[i].subject, notes: steps[i].notes ?? "", position: i, previous: i > 0 ? steps[0].body_md : "" }) });
+      const j = await res.json();
+      if (!res.ok) setAiMsg({ ok: false, text: j.error ?? "The AI could not write this email." });
+      else { update(i, { body_md: j.body }); setAiMsg({ ok: true, text: "Draft written. Read it, change anything you like, then send yourself a test." }); }
+    } catch { setAiMsg({ ok: false, text: "Could not reach the server." }); }
+    setAiBusy(null);
+  }
 
   async function sendTest(which: number | "all") {
     setTestBusy(which === "all" ? -1 : which); setTestMsg(null);
@@ -58,7 +69,7 @@ export function CampaignBuilder({ byState, byType, total }: { byState: Record<st
     try {
       const res = await fetch("/api/campaigns/test", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ to: testTo, ...what }) });
       const j = await res.json();
-      setTestMsg(res.ok ? { ok: true, text: `Sent ${j.sent} test email${j.sent === 1 ? "" : "s"}. Check your inbox and spam folder.` } : { ok: false, text: j.error ?? "Could not send the test." });
+      setTestMsg(res.ok ? { ok: true, text: `Sent ${j.sent} test email${j.sent === 1 ? "" : "s"}. Check your inbox and spam folder.${j.warning ? " " + j.warning : ""}` } : { ok: false, text: j.error ?? "Could not send the test." });
     } catch { setTestMsg({ ok: false, text: "Could not reach the server." }); }
     setTestBusy(null);
   }
@@ -71,8 +82,8 @@ export function CampaignBuilder({ byState, byType, total }: { byState: Record<st
     }
     setBusy(true); setErr("");
     const res = await fetch("/api/campaigns", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, filter_states: states, filter_carrier_types: types, filter_min_units: minU === "" ? null : +minU, filter_max_units: maxU === "" ? null : +maxU,
-        max_contacts: limit === "" ? null : +limit, daily_cap: cap, steps, mode, scheduled_at: schedDate ? schedDate.toISOString() : null }) });
+      body: JSON.stringify({ name, filter_carrier_types: types, max_contacts: limit === "" ? null : +limit, daily_cap: cap,
+        steps: steps.map((s) => ({ subject: s.subject, body_md: s.body_md, delay_days: s.delay_days })), mode, scheduled_at: schedDate ? schedDate.toISOString() : null }) });
     const j = await res.json();
     if (!res.ok) { setErr(j.error ?? "Could not create the campaign"); setBusy(false); return; }
     router.push(`/campaigns/${j.id}`);
@@ -80,60 +91,63 @@ export function CampaignBuilder({ byState, byType, total }: { byState: Record<st
 
   const blocked = busy || !name || steps.some((s) => !s.subject || !s.body_md) || (mode === "schedule" && (!schedDate || isNaN(schedDate.getTime()))) || estimate === 0;
   const button = mode === "now" ? "Start sending" : mode === "schedule" ? "Schedule campaign" : "Save draft";
+  const previewHtml = (i: number) => renderEmail(fill(steps[i].body_md, sample), "#", previewOpts(origin));
 
   return (
     <div className="grid grid-cols-[1fr_320px] gap-6 items-start">
       <div className="space-y-6">
         <section className="panel p-6">
           <label className="label" htmlFor="name">Campaign name</label>
-          <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} />
+          <input id="name" className="input" value={name} onChange={(e) => { setName(e.target.value); setNameEdited(true); }} />
         </section>
 
         <section className="panel p-6">
           <h2 className="font-semibold mb-4">1. Who gets it</h2>
-          <div className="mb-4">
-            <div className="label">States <span className="text-muted font-normal">(none selected = all)</span></div>
-            <div className="flex flex-wrap gap-2">{Object.entries(byState).length ? Object.entries(byState).sort((a, b) => b[1] - a[1]).map(([s, c]) => (
-              <button key={s} type="button" onClick={() => toggle(states, setStates, s)} className={`pill h-8 px-3 border ${states.includes(s) ? "bg-signSoft text-sign border-sign" : "bg-white border-line text-ink"}`}>{s} <span className="ml-1.5 text-muted font-normal">{c.toLocaleString()}</span></button>)) : <span className="text-sm text-muted">No contacts have a state yet.</span>}</div>
-          </div>
-          <div className="mb-4">
-            <div className="label">Contact type <span className="text-muted font-normal">(none selected = all)</span></div>
-            <div className="flex flex-wrap gap-2">{Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, c]) => (
-              <button key={t} type="button" onClick={() => toggle(types, setTypes, t)} className={`pill h-8 px-3 border ${types.includes(t) ? "bg-signSoft text-sign border-sign" : "bg-white border-line text-ink"}`}>{t} <span className="ml-1.5 text-muted font-normal">{c.toLocaleString()}</span></button>))}</div>
-          </div>
-          <div className="grid grid-cols-3 gap-4 max-w-xl">
-            <div><label className="label" htmlFor="minu">Trucks from</label><input id="minu" type="number" min={1} className="input" placeholder="any" value={minU} onChange={(e) => setMinU(e.target.value)} /></div>
-            <div><label className="label" htmlFor="maxu">to</label><input id="maxu" type="number" className="input" placeholder="any" value={maxU} onChange={(e) => setMaxU(e.target.value)} /></div>
-            <div><label className="label" htmlFor="lim">Only the first</label><input id="lim" type="number" min={1} className="input" placeholder="all" value={limit} onChange={(e) => setLimit(e.target.value)} /></div>
-          </div>
-          <p className="text-xs text-muted mt-2">Leave the truck range blank to include everyone, including contacts whose truck count is unknown. &ldquo;Only the first&rdquo; lets you roll out in batches while the sending domain warms up.</p>
+          <div className="label">Lists <span className="text-muted font-normal">(none selected = everyone)</span></div>
+          <div className="flex flex-wrap gap-2 mb-4">{Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, c]) => (
+            <button key={t} type="button" onClick={() => toggle(t)} className={`pill h-8 px-3 border ${types.includes(t) ? "bg-signSoft text-sign border-sign" : "bg-white border-line text-ink"}`}>{t} <span className="ml-1.5 text-muted font-normal">{c.toLocaleString()}</span></button>))}</div>
+          <div className="max-w-xs"><label className="label" htmlFor="lim">Only the first</label><input id="lim" type="number" min={1} className="input" placeholder="all" value={limit} onChange={(e) => setLimit(e.target.value)} /></div>
+          <p className="text-xs text-muted mt-2">Contacts who are not customers yet and are not already in another campaign. &ldquo;Only the first&rdquo; lets you roll out in batches while the sending domain warms up.</p>
         </section>
 
         <section className="panel p-6">
-          <div className="flex items-center justify-between mb-1"><h2 className="font-semibold">2. What you send</h2>
+          <div className="flex items-center justify-between mb-3"><h2 className="font-semibold">2. What you send</h2>
             <button type="button" className="btn-secondary h-8" onClick={() => setSteps([...steps, { subject: "", body_md: "", delay_days: 5 }])}>Add a follow-up</button></div>
-          <p className="text-sm text-muted mb-4">Use <code>{"{{company}}"}</code>, <code>{"{{state}}"}</code>, <code>{"{{power_units}}"}</code>, <code>{"{{fleet_type}}"}</code>. A blank line starts a new paragraph; **bold** and [links](https://…) work. The unsubscribe footer is added automatically.</p>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <label className="text-sm font-medium" htmlFor="tpl">Start from a template</label>
+            <select id="tpl" className="input w-72 h-9" value="" onChange={(e) => applyTemplate(e.target.value)}>
+              <option value="">Choose a template…</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <p className="text-sm text-muted mb-4">Edit anything, or type a title and press <strong>Write with AI</strong>. A blank line starts a new paragraph. A line with only a link becomes an orange button. **bold** works. The logo and footer are added to every email automatically. Check dates and claims before you send.</p>
           <div className="mb-5 p-3 bg-slate rounded-md">
             <div className="flex flex-wrap items-center gap-3">
               <label className="text-sm font-medium" htmlFor="testto">Test addresses</label>
               <input id="testto" type="text" className="input w-80 h-9" placeholder="you@example.com, other@example.com" value={testTo} onChange={(e) => setTestTo(e.target.value)} />
               <button type="button" className="btn-secondary h-9" disabled={!testTo.trim() || steps.some((x) => !x.subject || !x.body_md) || testBusy !== null} onClick={() => sendTest("all")}>{testBusy === -1 ? "Sending…" : `Send all ${steps.length} test email${steps.length > 1 ? "s" : ""}`}</button>
             </div>
-            <p className="text-xs text-muted mt-2">Up to 5 addresses, separated by commas. Press &ldquo;Send test&rdquo; on one email below, or send the whole sequence at once. Works any day and hour.</p>
+            <p className="text-xs text-muted mt-2">Up to 5 addresses, separated by commas. Works any day and hour.</p>
           </div>
-          {testMsg && <p className={`text-sm mb-4 ${testMsg.ok ? "text-sign" : "text-brick"}`}>{testMsg.text}</p>}
+          {testMsg && <p className={`text-sm mb-3 ${testMsg.ok ? "text-sign" : "text-brick"}`}>{testMsg.text}</p>}
+          {aiMsg && <p className={`text-sm mb-3 ${aiMsg.ok ? "text-sign" : "text-brick"}`}>{aiMsg.text}</p>}
           <div className="space-y-5">{steps.map((s, i) => (
             <div key={i} className="border border-line rounded-lg p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="font-semibold">{i === 0 ? "First email" : `Follow-up ${i}`}</div>
                 <div className="flex items-center gap-3 text-sm">
                   {i > 0 && <label className="flex items-center gap-2">Send <input type="number" min={1} className="input w-16 h-8" value={s.delay_days} onChange={(e) => update(i, { delay_days: +e.target.value })} /> days after the previous</label>}
-                  <button type="button" className="btn-secondary h-8" disabled={!testTo || !s.subject || !s.body_md || testBusy !== null} onClick={() => sendTest(i)}>{testBusy === i ? "Sending…" : "Send test"}</button>
-                  {steps.length > 1 && <button type="button" className="text-brick hover:underline" onClick={() => setSteps(steps.filter((_, k) => k !== i))}>Remove</button>}
+                  <button type="button" className="btn-secondary h-8" disabled={!testTo.trim() || !s.subject || !s.body_md || testBusy !== null} onClick={() => sendTest(i)}>{testBusy === i ? "Sending…" : "Send test"}</button>
+                  {steps.length > 1 && <button type="button" className="text-brick hover:underline" onClick={() => { setSteps(steps.filter((_, k) => k !== i)); setPreview(null); }}>Remove</button>}
                 </div>
               </div>
-              <input className="input mb-2" placeholder="Subject" value={s.subject} onChange={(e) => update(i, { subject: e.target.value })} />
-              <textarea className="textarea" rows={7} placeholder="Body" value={s.body_md} onChange={(e) => update(i, { body_md: e.target.value })} />
+              <input className="input mb-2" placeholder="Title (this is the subject line)" value={s.subject} onChange={(e) => update(i, { subject: e.target.value })} />
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <button type="button" className="btn-secondary h-9" disabled={aiBusy !== null || s.subject.trim().length < 3} onClick={() => writeWithAI(i)}>{aiBusy === i ? "Writing…" : "✨ Write with AI"}</button>
+                <input className="input h-9 flex-1 min-w-[240px]" placeholder="Details for the AI (optional), for example a deadline or an offer" value={s.notes ?? ""} onChange={(e) => update(i, { notes: e.target.value })} />
+              </div>
+              <textarea className="textarea" rows={9} placeholder="Body" value={s.body_md} onChange={(e) => update(i, { body_md: e.target.value })} />
+              <button type="button" className="text-sm text-sign font-medium mt-2 hover:underline" disabled={!s.body_md.trim()} onClick={() => setPreview(preview === i ? null : i)}>{preview === i ? "Hide preview" : "Preview this email"}</button>
+              {preview === i && <iframe title="Email preview" sandbox="" className="w-full h-[640px] border border-line rounded-md mt-3 bg-white" srcDoc={previewHtml(i)} />}
             </div>))}</div>
         </section>
       </div>

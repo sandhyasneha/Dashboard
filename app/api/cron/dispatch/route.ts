@@ -13,6 +13,7 @@ export async function GET(req: Request) {
   const denied = requireCron(req); if (denied) return denied;
   const sb = supabaseAdmin();
   const app = process.env.NEXT_PUBLIC_APP_URL!;
+  if (!process.env.COMPANY_POSTAL_ADDRESS) return NextResponse.json({ skipped: "COMPANY_POSTAL_ADDRESS is not set in Vercel. Every marketing email must carry your postal address, so sending is paused until it is added." });
 
   // Campaigns scheduled for a time that has now arrived start sending (the window and caps below still apply).
   await sb.from("campaigns").update({ status: "running", scheduled_at: null }).eq("status", "scheduled").lte("scheduled_at", new Date().toISOString());
