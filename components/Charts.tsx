@@ -4,18 +4,18 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 const ink = "#1B2431", sign = "#0E6B41", amber = "#C98A00", muted = "#9AA3AE", line = "#D9DDD6";
 const tip = { contentStyle: { border: `1px solid ${line}`, borderRadius: 6, fontSize: 13 }, labelStyle: { fontWeight: 600 } };
 
-const usd = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+const usd0 = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+const usd2 = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
 // "currency" is a plain flag because a server page cannot pass a function to a client component.
 export function MonthlyBars({ data, current, previous, dataKey, currency }: { data: any[]; current: string; previous?: string; dataKey: "filed" | "revenue" | "vehicles"; currency?: boolean }) {
-  const format = currency ? usd : undefined;
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data} barGap={2}>
         <CartesianGrid vertical={false} stroke={line} />
         <XAxis dataKey="month" tickLine={false} axisLine={false} fontSize={12} />
-        <YAxis tickLine={false} axisLine={false} fontSize={12} width={48} tickFormatter={format} />
-        <Tooltip {...tip} formatter={(v: any) => (format ? format(Number(v)) : v)} />
+        <YAxis tickLine={false} axisLine={false} fontSize={12} width={48} tickFormatter={currency ? usd0 : undefined} />
+        <Tooltip {...tip} formatter={(v: any) => (currency ? usd2(Number(v)) : v)} />
         <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
         {previous && <Bar dataKey={`prev_${dataKey}`} name={previous} fill={muted} radius={[3, 3, 0, 0]} />}
         <Bar dataKey={dataKey} name={current} fill={sign} radius={[3, 3, 0, 0]} />

@@ -78,7 +78,7 @@ export const KB: KbArticle[] = [
       { heading: "Who leaves a campaign", steps: [
         "Anyone who unsubscribes, bounces or complains, immediately.",
         "Prospect campaigns: a contact who registers on trucktaxpro.com (after the next daily sync).",
-        "Renewal campaigns: a customer who completes a return for the target tax year.",
+        "Renewal campaigns: a customer who pays for a return for the target tax year.",
       ] },
       { heading: "Rules", note: "A contact can be in only one campaign at a time, and only contacts with status new are enrolled." },
     ],
@@ -222,12 +222,12 @@ export const KB: KbArticle[] = [
     summary: "Customers who filed last tax year but not this one.",
     sections: [
       { heading: "Steps", steps: [
-        "Dashboard, then Retention. The list shows customers who completed a return last tax year but not yet this year.",
+        "Dashboard, then Retention. The list shows customers who paid for a return last tax year but not yet this year.",
         "Use Download CSV if you want the list in Excel.",
         "Press Start renewal campaign. It creates a draft with three emails and enrolls the customers who are not already in a sequence.",
         "Open the campaign, send yourself a test, then press Start now or Schedule.",
       ] },
-      { heading: "How people drop out", text: "A customer leaves the campaign as soon as they complete a return for this tax year. This is checked before every email and at each daily sync." },
+      { heading: "How people drop out", text: "A customer leaves the campaign as soon as they pay for a return for this tax year. This is checked before every email and at each daily sync." },
       { heading: "Good to know", note: "This depends on filing history in production. Until older filings are available to the sync, the list will be short." },
     ],
   },
@@ -236,9 +236,10 @@ export const KB: KbArticle[] = [
     summary: "Definitions, so everyone reads them the same way.",
     sections: [
       { heading: "Definitions", steps: [
-        "Completed return: a filing whose status is Completed (status 4).",
-        "Month of a return: the month the return was marked completed (its modified date).",
-        "Revenue: TruckTaxPro's service fee only (`ServiceFeeAmount`), not the IRS tax collected.",
+        "Paid return: a filing that has been paid, meaning its status is Paid, Submitted, Completed or Schedule 1 Ready. A draft or rejected return does not count.",
+        "Month of a return: the month it was paid, taken from the filing's last update date.",
+        "Revenue: what Stripe actually collected for TruckTaxPro's service fee, after any discount, in the month it was paid (`PortalFeePayment`). It is not the list price and not the IRS tax. The Filings & revenue page also shows list price, discounts given and the coupons used.",
+        "Paying customers: people with at least one paid return.",
         "Tax year: TY2026-27 means the tax period 1 July 2026 to 30 June 2027. The year shown is the active period.",
         "Registrations: users by the date they signed up (`UserMaster.CreatedDate`). Deleted users are left out.",
         "Became customers: contacts from your lists whose email now exists as a registered user.",
@@ -273,7 +274,7 @@ $a = New-ScheduledTaskAction -Execute $node -Argument "sync.mjs" -WorkingDirecto
 Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
       { heading: "Settings in the sync's .env file (names only)", text: "`MSSQL_SERVER` (`localhost\\SQLEXPRESS`), `MSSQL_MODE` (`local`), `MSSQL_USER` (`sync_user`), `MSSQL_PASSWORD`, `MSSQL_PROD_DB`, `MSSQL_EMAILCENTER_DB`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Never paste the values into chats or tickets. The folder is locked to SYSTEM and Administrators." },
       { heading: "Why it uses local mode", text: "TCP/IP is switched off on this SQL Server. The only network listener (port 49679) is SQL Server's admin-only connection, which refuses normal logins. So the sync reads through shared memory with Windows PowerShell (`sqlquery.ps1`), the same route SSMS uses on the server.", note: "Do not turn on TCP/IP or restart SQL Server for this, and never give `sync_user` sysadmin rights." },
-      { heading: "What the login can do", text: "`sync_user` can read five tables in `TruckTaxPro` (not password columns) and read and add rows in `EmailMarketingCustomers`. Nothing else. The sync keeps only each contact's email and phone." },
+      { heading: "What the login can do", text: "`sync_user` can read eight tables in `TruckTaxPro`, and only safe columns of them: never passwords, card details, payment gateway data or bank details. It can also read and add rows in `EmailMarketingCustomers`. Nothing else. The sync keeps only each contact's email and phone." },
     ],
   },
   {

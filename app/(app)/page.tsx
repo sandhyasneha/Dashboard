@@ -13,21 +13,22 @@ export default async function Overview() {
   const head = { count: "exact" as const, head: true };
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
 
-  const [series, prevSeries, status, sync, users, usersThisMonth, filedThisMonth, revThisMonth, leads, customers, month, settings, campaigns] = await Promise.all([
+  const [series, prevSeries, status, sync, users, usersThisMonth, filedThisMonth, revThisMonth, leads, customers, month, settings, campaigns, paying] = await Promise.all([
     filingsSeries(ty), filingsSeries(ty - 1),
     sb.rpc("dash_status_breakdown", { p_tax_year: ty }),
     lastSync(),
     sb.from("ttp_users").select("user_id", head),
     sb.from("ttp_users").select("user_id", head).gte("registered_at", monthStart.toISOString()),
-    sb.from("ttp_filings").select("filing_id", head).eq("status_id", 4).gte("completed_at", monthStart.toISOString()),
-    sb.from("ttp_filings").select("service_fee").eq("status_id", 4).gte("completed_at", monthStart.toISOString()),
+    sb.from("ttp_filings").select("filing_id", head).not("paid_at", "is", null).gte("paid_at", monthStart.toISOString()),
+    sb.from("ttp_payments").select("amount").eq("is_paid", true).gte("paid_on", monthStart.toISOString()),
     sb.from("leads").select("id", head), sb.from("leads").select("id", head).eq("is_customer", true),
     sb.from("sends_this_month").select("n").single(), sb.from("settings").select("*").eq("id", 1).single(),
     campaignsWithStats({ status: "running", limit: 3 }).then((data) => ({ data })),
+    sb.rpc("dash_unique_filers"),
   ]);
   const filedTY = series.reduce((a, r) => a + r.filed, 0);
   const revTY = series.reduce((a, r) => a + r.revenue, 0);
-  const revMonth = (revThisMonth.data ?? []).reduce((a: number, r: any) => a + Number(r.service_fee ?? 0), 0);
+  const revMonth = (revThisMonth.data ?? []).reduce((a: number, r: any) => a + Number(r.amount ?? 0), 0);
   const merged = series.map((r, i) => ({ ...r, prev_filed: prevSeries[i].filed, prev_revenue: prevSeries[i].revenue }));
 
   return (
@@ -35,15 +36,15 @@ export default async function Overview() {
       <PageHeader title={`Overview · ${tyLabel(ty)}`} sub={sync ? `Production data as of ${when(sync.finished_at ?? sync.started_at)}${sync.error ? " · last sync failed" : ""}` : "Waiting for the first sync from the server"} />
 
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <Stat label={`Returns completed · ${tyLabel(ty)}`} value={filedTY} tone="sign" sub={`${n(filedThisMonth.count ?? 0)} this month`} />
+        <Stat label={`Paid returns · ${tyLabel(ty)}`} value={filedTY} tone="sign" sub={`${n(filedThisMonth.count ?? 0)} this month`} />
         <Stat label="Service-fee revenue" value={money(revTY)} tone="sign" sub={`${money(revMonth)} this month`} />
         <Stat label="Registered users" value={users.count ?? 0} sub={`${n(usersThisMonth.count ?? 0)} new this month`} />
-        <Stat label="Filed per registered user" value={pct(filedTY, users.count ?? 0)} sub="completed returns ÷ users" />
+        <Stat label="Paying customers" value={Number(paying.data ?? 0)} tone="sign" sub={`${pct(Number(paying.data ?? 0), users.count ?? 0)} of registered users`} />
       </div>
 
       <div className="grid grid-cols-[1.6fr_1fr] gap-6 mb-6">
         <section className="panel p-5">
-          <div className="flex items-baseline justify-between mb-3"><h2 className="font-semibold">Completed returns by month</h2><Link href="/dashboard/filings" className="text-sm text-sign font-medium">Details</Link></div>
+          <div className="flex items-baseline justify-between mb-3"><h2 className="font-semibold">Paid returns by month</h2><Link href="/dashboard/filings" className="text-sm text-sign font-medium">Details</Link></div>
           <MonthlyBars data={merged} dataKey="filed" current={tyLabel(ty)} previous={tyLabel(ty - 1)} />
         </section>
         <section className="panel p-5">

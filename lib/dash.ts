@@ -37,7 +37,7 @@ export async function lastSync() {
   return data;
 }
 
-export const money = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+export const money = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
 /** Campaigns with their stats attached as campaign_stats[0]. Separate queries because a view can't be embedded. */
 export async function campaignsWithStats(opts: { status?: string; limit?: number } = {}) {

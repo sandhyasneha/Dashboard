@@ -455,3 +455,125 @@ create table if not exists test_sends (
 );
 create index if not exists test_sends_sent_idx on test_sends(sent_at desc);
 alter table test_sends enable row level security;
+-- Run once in the Supabase SQL editor (safe to re-run).
+-- Revenue and customers now follow PAYMENT, not only IRS completion.
+-- A return counts as paid when its status is Paid (2), Submitted (3), Completed (4) or Schedule 1 Ready (6).
+-- Draft (1) and Rejected (5) do not count.
+
+-- When it was paid: the filing's last update date (until the payment date itself is read from production).
+alter table ttp_filings add column if not exists paid_at timestamptz
+  generated always as (case when status_id in (2, 3, 4, 6) then coalesce(modified_at, created_at) end) stored;
+create index if not exists ttp_filings_paid_idx on ttp_filings(paid_at);
+
+create or replace function dash_filings_by_month(p_tax_year int)
+returns table(month date, filed int, revenue numeric, vehicles int) language sql stable as $$
+  select date_trunc('month', paid_at)::date, count(*)::int, coalesce(sum(service_fee), 0), coalesce(sum(vehicle_count), 0)::int
+  from ttp_filings where paid_at is not null and tax_year = p_tax_year
+  group by 1 order by 1
+$$;
+
+create or replace function dash_unique_filers()
+returns int language sql stable as $$
+  select count(distinct lower(email))::int from ttp_filings where paid_at is not null and email is not null
+$$;
+
+create or replace function dash_retention_counts(p_prev int, p_curr int)
+returns table(prev_filers int, returned int) language sql stable as $$
+  with prev as (select distinct lower(email) e from ttp_filings where paid_at is not null and tax_year = p_prev and email is not null),
+       curr as (select distinct lower(email) e from ttp_filings where paid_at is not null and tax_year = p_curr and email is not null)
+  select (select count(*) from prev)::int, (select count(*) from prev p join curr c on c.e = p.e)::int
+$$;
+
+create or replace function dash_lapsed(p_prev int, p_curr int)
+returns table(email text, name text, phone text, last_filed_at timestamptz, filings_prev int, vehicles int, lead_status text, in_sequence boolean) language sql stable as $$
+  with prev as (
+    select lower(f.email) email, max(f.paid_at) last_filed_at, count(*)::int filings_prev, sum(f.vehicle_count)::int vehicles
+    from ttp_filings f where f.paid_at is not null and f.tax_year = p_prev and f.email is not null group by 1
+  ), curr as (
+    select distinct lower(email) email from ttp_filings where paid_at is not null and tax_year = p_curr and email is not null
+  )
+  select p.email, u.name, u.phone, p.last_filed_at, p.filings_prev, p.vehicles, l.status,
+         exists(select 1 from enrollments e where e.lead_id = l.id and e.status = 'active')
+  from prev p
+  left join curr c on c.email = p.email
+  left join (select distinct on (lower(email)) lower(email) em, name, phone from ttp_users order by lower(email), registered_at desc) u on u.em = p.email
+  left join leads l on l.email = p.email
+  where c.email is null order by p.last_filed_at desc, p.email
+$$;
+
+create or replace function apply_customer_marks()
+returns int language plpgsql as $$
+declare v int := 0;
+begin
+  with reg as (
+    select l.id, u.registered_at from leads l join ttp_users u on lower(u.email) = l.email where l.is_customer = false
+  )
+  update leads l set is_customer = true, status = 'customer', customer_registered_at = coalesce(l.customer_registered_at, reg.registered_at), updated_at = now()
+  from reg where l.id = reg.id;
+  get diagnostics v = row_count;
+  update leads l set customer_filed_at = f.paid_at
+  from (select lower(email) email, min(paid_at) paid_at from ttp_filings where paid_at is not null group by lower(email)) f
+  where l.email = f.email and l.customer_filed_at is null;
+  -- Prospect sequences stop when the lead converts.
+  update enrollments e set status = 'exited_customer'
+  from leads l, campaigns c where e.lead_id = l.id and e.campaign_id = c.id and c.kind = 'prospect' and l.is_customer and e.status = 'active';
+  -- Renewal sequences stop when the customer pays for this year's return.
+  update enrollments e set status = 'exited_customer'
+  from leads l, campaigns c where e.lead_id = l.id and e.campaign_id = c.id and c.kind = 'renewal' and e.status = 'active'
+    and exists (select 1 from ttp_filings f where lower(f.email) = l.email and f.paid_at is not null and f.tax_year = c.target_tax_year);
+  return v;
+end $$;
+
+-- Apply it to the data already synced.
+select apply_customer_marks();
+-- Run once in the Supabase SQL editor (safe to re-run). Needs patch-006.sql to have been run first.
+-- Revenue = what Stripe actually collected (after discounts), in the month it was paid.
+-- Source: production PortalFeePayment (+ the coupon in FilingCouponUsage / CouponMaster). Card and gateway fields are never copied.
+
+create table if not exists ttp_payments (
+  payment_id int primary key,
+  filing_id int,
+  amount numeric(12,2) not null default 0,       -- the amount actually collected
+  payment_status text,
+  paid_on timestamptz,                           -- the payment date (PortalFeePayment.CreatedDate)
+  modified_at timestamptz,
+  is_deleted boolean not null default false,
+  discount_amount numeric(12,2) not null default 0,
+  coupon_code text,
+  is_paid boolean generated always as (lower(coalesce(payment_status, '')) = 'paid' and not is_deleted) stored,
+  synced_at timestamptz not null default now()
+);
+create index if not exists ttp_payments_filing_idx on ttp_payments(filing_id);
+create index if not exists ttp_payments_paid_idx on ttp_payments(paid_on) where is_paid;
+alter table ttp_payments enable row level security;
+
+-- Returns paid by month (from the filing status) and revenue by month (from the payments), side by side.
+create or replace function dash_filings_by_month(p_tax_year int)
+returns table(month date, filed int, revenue numeric, vehicles int) language sql stable as $$
+  with f as (
+    select date_trunc('month', paid_at)::date m, count(*)::int filed, coalesce(sum(vehicle_count), 0)::int vehicles
+    from ttp_filings where paid_at is not null and tax_year = p_tax_year group by 1
+  ), r as (
+    select date_trunc('month', p.paid_on)::date m, sum(p.amount) revenue
+    from ttp_payments p join ttp_filings fl on fl.filing_id = p.filing_id
+    where p.is_paid and fl.tax_year = p_tax_year group by 1
+  )
+  select coalesce(f.m, r.m), coalesce(f.filed, 0), coalesce(r.revenue, 0), coalesce(f.vehicles, 0)
+  from f full join r on r.m = f.m order by 1
+$$;
+
+-- Collected vs list price vs discounts for a tax year.
+create or replace function dash_revenue_summary(p_tax_year int)
+returns table(collected numeric, discounts numeric, gross numeric, payments int) language sql stable as $$
+  select coalesce(sum(p.amount), 0), coalesce(sum(p.discount_amount), 0), coalesce(sum(p.amount + p.discount_amount), 0), count(*)::int
+  from ttp_payments p join ttp_filings fl on fl.filing_id = p.filing_id
+  where p.is_paid and fl.tax_year = p_tax_year
+$$;
+
+create or replace function dash_coupon_summary(p_tax_year int)
+returns table(coupon_code text, uses int, discount_total numeric) language sql stable as $$
+  select p.coupon_code, count(*)::int, coalesce(sum(p.discount_amount), 0)
+  from ttp_payments p join ttp_filings fl on fl.filing_id = p.filing_id
+  where p.is_paid and fl.tax_year = p_tax_year and p.discount_amount > 0
+  group by p.coupon_code order by 3 desc
+$$;
