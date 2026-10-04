@@ -201,6 +201,7 @@ export const KB: KbArticle[] = [
         "The four cards: how many filed, how many filed again, how many have not yet, and how many of those are already in a follow-up sequence.",
         "The By month table: click a month to see only the customers who filed in that month. All months counts each customer once.",
         "The customer list: Yes with a date means they filed again, and Not yet means they have not. Follow-up shows whether they are in a sequence, unsubscribed or not contacted. Source says System or Imported.",
+        "The list has a search box (email, name or phone), a filter (Everyone, Filed again, Not yet) and pages of 50, so it stays quick however many customers there are. The table scrolls and keeps its heading in view. Download CSV always includes everyone in the group.",
       ] },
       { heading: "What you can do", steps: [
         "Download CSV: the customers in the selected group, ready for Excel.",
@@ -230,8 +231,9 @@ export const KB: KbArticle[] = [
       ] },
       { heading: "Review first or automatic", steps: [
         "Review first: each month a draft appears under Ready to review on the Retention page. You open it, check it, send yourself a test and press Start now.",
-        "Send automatically: the campaign starts by itself, within the usual weekday sending hours and daily limits. Use this only once you are happy with the emails.",
+        "Send automatically: nobody has to press anything. Each month the campaign is created and starts sending by itself, within the usual weekday sending hours and daily limits, and the follow-up goes out after the days you set. Customers who file drop out straight away. It only runs while Create it every month is ticked and saved. Use it once you are happy with the emails.",
       ] },
+      { heading: "Why it helps", text: "The reminder and the follow-up go out on their own, so support does not have to remember to chase customers who have not filed again. Anyone who files stops receiving them." },
       { heading: "Try it", text: "Press Create this month's renewals now to see exactly what the monthly job would create. Only one is created per month, so a manual run uses up that month's automatic one." },
       { heading: "Placeholders in the emails", text: "`{{last_filed}}` becomes the month they filed, for example April 2027. `{{tax_year}}` becomes the year they should file in, for example 2027-28. `{{month}}` becomes the current month name." },
       { heading: "Good to know", steps: [

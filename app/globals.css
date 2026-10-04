@@ -23,3 +23,7 @@ h1, h2, h3 { letter-spacing: -0.01em; }
 .table th { @apply text-left font-semibold text-muted py-2.5 px-3 border-b border-line; }
 .table td { @apply py-2.5 px-3 border-b border-line align-top; }
 .table tr:last-child td { @apply border-b-0; }
+
+/* A table inside a box that scrolls, with the header row staying in view. */
+.table-scroll { max-height: 620px; overflow: auto; }
+.table-scroll thead th { position: sticky; top: 0; z-index: 1; background: #fff; box-shadow: 0 1px 0 #D9DDD6; }

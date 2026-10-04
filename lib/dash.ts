@@ -81,10 +81,37 @@ export type CohortRow = {
 export async function fetchCohort(taxYear: number, month: number | null): Promise<CohortRow[]> {
   const sb = supabaseAdmin(); const out: CohortRow[] = []; const size = 1000;
   for (let from = 0; ; from += size) {
-    const { data } = await sb.rpc("retention_cohort", { p_tax_year: taxYear, p_month: month }).range(from, from + size - 1);
+    const { data } = await sb.rpc("retention_cohort", cohortArgs(taxYear, month)).order("returned").order("cohort_at").order("email").range(from, from + size - 1);
     if (!data?.length) break;
     out.push(...(data as CohortRow[]));
     if (data.length < size) break;
   }
   return out;
+}
+
+/** A month of null is left out, because empty values cannot be sent in a GET or HEAD request. */
+export const cohortArgs = (taxYear: number, month: number | null) => (month ? { p_tax_year: taxYear, p_month: month } : { p_tax_year: taxYear });
+
+export const COHORT_PAGE = 50;
+
+/** One page of the cohort, filtered by a search word and by filed-again status. total counts every match, not just this page. */
+export async function cohortPage(taxYear: number, month: number | null, o: { q?: string; filter?: "all" | "again" | "notyet"; page?: number; size?: number }) {
+  const sb = supabaseAdmin(); const size = o.size ?? COHORT_PAGE;
+  const term = (o.q ?? "").replace(/[,()*%\\"']/g, " ").trim().slice(0, 60);       // characters that would break the filter syntax
+  const run = async (page: number) => {
+    let q = sb.rpc("retention_cohort", cohortArgs(taxYear, month), { count: "exact" });
+    if (term) q = q.or(`email.ilike.*${term}*,name.ilike.*${term}*,phone.ilike.*${term}*`);
+    if (o.filter === "again") q = q.eq("returned", true); else if (o.filter === "notyet") q = q.eq("returned", false);
+    const { data, count, error } = await q.order("returned").order("cohort_at").order("email").range((page - 1) * size, page * size - 1);
+    return { rows: (data ?? []) as CohortRow[], total: count ?? 0, error, page };
+  };
+  const asked = Math.floor(Number(o.page));
+  const page = asked >= 1 ? asked : 1;                      // a missing or invalid page number means page 1
+  let r = await run(page);
+  if (!r.rows.length && page > 1) {                           // a page past the end: learn the total, then show the last page
+    const first = await run(1);
+    const last = Math.max(1, Math.ceil(first.total / size));
+    r = last === 1 ? first : await run(Math.min(page, last));
+  }
+  return { ...r, size, term };
 }
