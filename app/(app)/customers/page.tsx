@@ -31,7 +31,7 @@ export default async function Customers({ searchParams }: { searchParams: { q?: 
         <div className="panel overflow-hidden">
           <div className="px-5 py-4 border-b border-line flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-semibold">Customers</h2>
-            <form action="/customers" className="flex items-center gap-2"><input className="input h-9 w-64" name="q" placeholder="Search email or phone" defaultValue={q} /><button className="btn-secondary h-9">Search</button>{q && <Link href="/customers" className="text-sm text-sign font-medium hover:underline">Clear</Link>}</form>
+            <form action="/customers" className="flex items-center gap-2"><input className="input h-9 !w-64" name="q" placeholder="Search email or phone" defaultValue={q} /><button className="btn-secondary h-9">Search</button>{q && <Link href="/customers" className="text-sm text-sign font-medium hover:underline">Clear</Link>}</form>
           </div>
           {data?.length ? (
             <div className="table-scroll"><table className="table">

@@ -200,7 +200,7 @@ export const KB: KbArticle[] = [
       { heading: "How to read it", steps: [
         "The four cards: how many filed, how many filed again, how many have not yet, and how many of those are already in a follow-up sequence.",
         "The By month table: click a month to see only the customers who filed in that month. All months counts each customer once.",
-        "The customer list: Yes with a date means they filed again, and Not yet means they have not. Follow-up shows whether they are in a sequence, unsubscribed or not contacted. Source says System or Imported.",
+        "The customer list: Filed shows the date and whether the customer came from the system or an import. Status shows Filed again with the date, or Not yet with whether they are in a follow-up sequence, unsubscribed or not contacted.",
         "The list has a search box (email, name or phone), a filter (Everyone, Filed again, Not yet) and pages of 50, so it stays quick however many customers there are. The table scrolls and keeps its heading in view. Download CSV always includes everyone in the group.",
       ] },
       { heading: "What you can do", steps: [
@@ -294,6 +294,7 @@ export const KB: KbArticle[] = [
         "Month of a return: the month it was paid, taken from the filing's last update date.",
         "Revenue: what Stripe actually collected for TruckTaxPro's service fee, after any discount, in the month it was paid (`PortalFeePayment`). It is not the list price and not the IRS tax. The Filings & revenue page also shows list price, discounts given and the coupons used.",
         "Paying customers: people with at least one paid return.",
+        "Vehicles: the taxable and suspended vehicles on paid returns, counted from the vehicle list on each return. Credits for sold, destroyed or stolen vehicles are not counted. The count is refreshed every day.",
         "Tax years shown: from TY2026-27, the first season on this platform, up to the next season. The next season appears by itself, so TY2027-28 shows now and TY2028-29 appears on 1 July 2027. Earlier years are not shown because there is no data.",
         "Tax year: TY2026-27 means the tax period 1 July 2026 to 30 June 2027. The year shown is the active period.",
         "Registrations: users by the date they signed up (`UserMaster.CreatedDate`). Deleted users are left out.",
@@ -327,9 +328,9 @@ Get-ScheduledTaskInfo -TaskName "TruckTaxPro Sync" | Select LastRunTime, LastTas
       { heading: "Fix for 0x80070002", code: String.raw`$node = '"' + (Get-Command node).Source + '"'
 $a = New-ScheduledTaskAction -Execute $node -Argument "sync.mjs" -WorkingDirectory "C:\trucktaxpro-sync"
 Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
-      { heading: "Settings in the sync's .env file (names only)", text: "`MSSQL_SERVER` (`localhost\\SQLEXPRESS`), `MSSQL_MODE` (`local`), `MSSQL_USER` (`sync_user`), `MSSQL_PASSWORD`, `MSSQL_PROD_DB`, `MSSQL_EMAILCENTER_DB`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`. Never paste the values into chats or tickets. The folder is locked to SYSTEM and Administrators." },
+      { heading: "Settings in the sync's .env file (names only)", text: "`MSSQL_SERVER` (`localhost\\SQLEXPRESS`), `MSSQL_MODE` (`local`), `MSSQL_USER` (`sync_user`), `MSSQL_PASSWORD`, `MSSQL_PROD_DB`, `MSSQL_EMAILCENTER_DB`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and optionally `VEHICLE_TYPE_IDS` (the vehicle types counted, default `1,2` for taxable and suspended). Never paste the values into chats or tickets. The folder is locked to SYSTEM and Administrators." },
       { heading: "Why it uses local mode", text: "TCP/IP is switched off on this SQL Server. The only network listener (port 49679) is SQL Server's admin-only connection, which refuses normal logins. So the sync reads through shared memory with Windows PowerShell (`sqlquery.ps1`), the same route SSMS uses on the server.", note: "Do not turn on TCP/IP or restart SQL Server for this, and never give `sync_user` sysadmin rights." },
-      { heading: "What the login can do", text: "`sync_user` can read eight tables in `TruckTaxPro`, and only safe columns of them: never passwords, card details, payment gateway data or bank details. It can also read and add rows in `EmailMarketingCustomers`. Nothing else. The sync keeps only each contact's email and phone." },
+      { heading: "What the login can do", text: "`sync_user` can read nine tables in `TruckTaxPro`, and only safe columns of them: never passwords, card details, payment gateway data, bank details, VINs or buyer details. It can also read and add rows in `EmailMarketingCustomers`. Nothing else. The sync keeps only each contact's email and phone." },
     ],
   },
   {
@@ -347,7 +348,7 @@ Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
 git commit -m "Describe the change"
 git push` },
       { heading: "Good to know", steps: [
-        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals). Each is safe to run again.",
+        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals), `009` (vehicle counts). Each is safe to run again.",
         "The sync scripts live on the server in `C:\\trucktaxpro-sync`, not in Vercel. Updating them means copying files there.",
       ] },
     ],

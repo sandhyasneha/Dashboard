@@ -7,7 +7,7 @@ import { RetentionActions } from "@/components/RetentionActions";
 import { RetentionImport } from "@/components/RetentionImport";
 import { RetentionAuto } from "@/components/RetentionAuto";
 import { Pager } from "@/components/Pager";
-import { n, pct, when } from "@/lib/format";
+import { day, n, pct, when } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 const SEASON = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]; // calendar months in tax-year order
@@ -80,8 +80,8 @@ export default async function Retention({ searchParams }: { searchParams: { ty?:
           <h2 className="font-semibold">Customers · {label}</h2>
           <form action="/dashboard/retention" className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="ty" value={ty} />{month ? <input type="hidden" name="m" value={month} /> : null}
-            <input className="input h-9 w-64" name="q" placeholder="Search email, name or phone" defaultValue={q} />
-            <select className="input h-9 w-40" name="f" defaultValue={filter}><option value="all">Everyone</option><option value="again">Filed again</option><option value="notyet">Not yet</option></select>
+            <input className="input h-9 !w-64" name="q" placeholder="Search email, name or phone" defaultValue={q} />
+            <select className="input h-9 !w-40" name="f" defaultValue={filter}><option value="all">Everyone</option><option value="again">Filed again</option><option value="notyet">Not yet</option></select>
             <button className="btn-secondary h-9">Search</button>
             {(q || filter !== "all") && <Link href={href(month)} className="text-sm text-sign font-medium hover:underline">Clear</Link>}
           </form>
@@ -89,11 +89,17 @@ export default async function Retention({ searchParams }: { searchParams: { ty?:
         {rows.length ? (
           <div className="table-scroll">
             <table className="table">
-              <thead><tr><th>Customer</th><th>Email</th><th>Phone</th><th>Filed</th><th className="text-right">Vehicles</th><th>Source</th><th>Filed again</th><th>Follow-up</th></tr></thead>
+              <thead><tr><th>Customer</th><th>Phone</th><th>Filed</th><th className="text-right">Vehicles</th><th>Status</th></tr></thead>
               <tbody>{rows.map((r) => (
-                <tr key={r.email}><td className="font-medium">{r.name ?? "—"}</td><td className="text-muted">{r.email}</td><td className="text-muted whitespace-nowrap">{r.phone ?? "—"}</td><td className="text-muted whitespace-nowrap">{when(r.cohort_at)}</td><td className="text-right">{r.vehicles || "—"}</td><td className="text-muted">{r.source}</td>
-                  <td className="whitespace-nowrap">{r.returned ? <span className="pill bg-signSoft text-sign">Yes · {when(r.returned_at)}</span> : <span className="pill bg-amberSoft text-amber">Not yet</span>}</td>
-                  <td className="whitespace-nowrap">{r.returned ? <span className="text-muted">—</span> : r.in_sequence ? <span className="pill bg-amberSoft text-amber">In sequence</span> : r.lead_status === "unsubscribed" ? <span className="pill bg-slate text-muted">Unsubscribed</span> : <span className="pill bg-slate text-ink">Not contacted</span>}</td></tr>))}</tbody>
+                <tr key={r.email}>
+                  <td>{r.name ? <><div className="font-medium">{r.name}</div><div className="text-xs text-muted break-all">{r.email}</div></> : <div className="font-medium break-all">{r.email}</div>}</td>
+                  <td className="text-muted whitespace-nowrap">{r.phone ?? "—"}</td>
+                  <td className="whitespace-nowrap"><div>{day(r.cohort_at)}</div><div className="text-xs text-muted">{r.source}</div></td>
+                  <td className="text-right">{r.vehicles || "—"}</td>
+                  <td className="whitespace-nowrap">{r.returned
+                    ? <><span className="pill bg-signSoft text-sign">Filed again</span><div className="text-xs text-muted mt-1">{day(r.returned_at)}</div></>
+                    : <><span className="pill bg-amberSoft text-amber">Not yet</span><div className="text-xs text-muted mt-1">{r.in_sequence ? "In sequence" : r.lead_status === "unsubscribed" ? "Unsubscribed" : "Not contacted"}</div></>}</td>
+                </tr>))}</tbody>
             </table>
           </div>) : <p className="px-5 py-10 text-sm text-muted text-center">{q || filter !== "all" ? "No customers match that search." : <>Nobody filed in {label} yet. Customers appear here after they pay for a return and the daily sync runs. If you have older customers, use Import past filers below.</>}</p>}
         <Pager path="/dashboard/retention" params={{ ty: String(ty), m: month ? String(month) : undefined, q: q || undefined, f: filter !== "all" ? filter : undefined }} page={listed.page} pageSize={listed.size} total={listed.total} />

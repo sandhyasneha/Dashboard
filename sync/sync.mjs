@@ -73,7 +73,7 @@ async function main() {
     // 3. Filings joined to the 2290 return + status + period, with user email
     const filings = (await pool.request().input("since", sql.DateTime2, since).query(GUARD + `
       SELECT f.FilingId, f.UserId, u.EmailId, f.FilingNumber, f.FilingStatusId, s.StatusName,
-             r.TaxPeriodId, p.TaxYear, r.FirstUsedMonth, r.TotalVehicleCount,
+             r.TaxPeriodId, p.TaxYear, r.FirstUsedMonth,
              f.TotalTaxAmount, f.ServiceFeeAmount, f.TotalPayableAmount, f.CreatedDate, f.ModifiedDate
       FROM [${PROD}].dbo.FilingMaster f
       LEFT JOIN [${PROD}].dbo.UserMaster u ON u.UserId = f.UserId
@@ -84,12 +84,33 @@ async function main() {
     const filingsUp = await upsert("ttp_filings", filings.map((r) => ({
       filing_id: r.FilingId, user_id: r.UserId, email: r.EmailId ? String(r.EmailId).trim().toLowerCase() : null, filing_number: r.FilingNumber,
       status_id: r.FilingStatusId, status: r.StatusName, tax_period_id: r.TaxPeriodId, tax_year: r.TaxYear, first_used_month: r.FirstUsedMonth,
-      vehicle_count: r.TotalVehicleCount, total_tax: r.TotalTaxAmount, service_fee: r.ServiceFeeAmount, total_payable: r.TotalPayableAmount,
+      total_tax: r.TotalTaxAmount, service_fee: r.ServiceFeeAmount, total_payable: r.TotalPayableAmount,
       created_at: r.CreatedDate, modified_at: r.ModifiedDate,
       completed_at: r.FilingStatusId === 4 ? (r.ModifiedDate ?? r.CreatedDate) : null,
       synced_at: new Date().toISOString(),
     })), "filing_id");
     log("filings upserted", filingsUp);
+
+    // 3b. Vehicles per return, counted from the vehicle rows (production's TotalVehicleCount is not kept up to date).
+    //     Recounted for every return on every run, because vehicle rows have no modified date.
+    //     Reads only ids and the type code: never VIN, unit number, buyer or proof-file columns. Non-fatal, like the payments step.
+    let vehiclesError = null;
+    try {
+      const typeIds = String(env("VEHICLE_TYPE_IDS", "1,2")).split(",").map((x) => Number(x.trim())).filter((x) => Number.isInteger(x) && x > 0);
+      const ids = (typeIds.length ? typeIds : [1, 2]).join(",");   // 1 = Taxable, 2 = Suspended. Credits (3 to 6) and prior-year (7) are not new trucks.
+      const counts = (await pool.request().query(GUARD + `
+        SELECT r.FilingId, COUNT(v.VehicleDetailId) AS VehicleCount
+        FROM [${PROD}].dbo.Form2290ReturnMaster r
+        JOIN [${PROD}].dbo.Form2290VehicleDetail v ON v.ReturnId = r.ReturnId
+        WHERE ISNULL(r.IsDeleted,0) = 0 AND v.VehicleTypeId IN (${ids})
+        GROUP BY r.FilingId`)).recordset;
+      const { data: changed, error: ve } = await sb.rpc("apply_vehicle_counts", { p_counts: counts.map((c) => ({ filing_id: c.FilingId, n: Number(c.VehicleCount) })) });
+      if (ve) throw new Error(ve.message);
+      log("vehicle counts refreshed for", counts.length, "returns;", changed ?? 0, "changed");
+    } catch (e) {
+      vehiclesError = "Vehicles step: " + String(e.message ?? e) + " (run patch-009.sql in Supabase and grant sync_user SELECT on Form2290VehicleDetail (VehicleDetailId, ReturnId, VehicleTypeId))";
+      console.error(vehiclesError);
+    }
 
     // 4. Local insert: every registered user becomes an EmailMarketingCustomer (one SQL statement, no app roundtrip).
     //    If EmailMarketingCustomerId is not an IDENTITY column (e.g. the table came from an import), number the new rows ourselves.
@@ -155,7 +176,11 @@ async function main() {
     //    Kept non-fatal so a problem here never blocks the steps above; it shows as "last sync failed" on the dashboard.
     let paymentsError = null;
     try {
-      const pays = (await pool.request().input("since", sql.DateTime2, since).query(GUARD + `
+      // First run of this step (nothing stored yet): read every payment, not only recent ones.
+      const { count: havePayments, error: countErr } = await sb.from("ttp_payments").select("payment_id", { count: "exact", head: true });
+      if (countErr) throw new Error(countErr.message);
+      const paySince = (havePayments ?? 0) === 0 ? new Date("2000-01-01") : since;
+      const pays = (await pool.request().input("since", sql.DateTime2, paySince).query(GUARD + `
         SELECT p.PortalFeePaymentId, p.FilingId, p.Amount, p.PaymentStatus, p.CreatedDate, p.ModifiedDate, p.IsDeleted,
                cu.DiscountAmount, cu.CouponCode
         FROM [${PROD}].dbo.PortalFeePayment p
@@ -175,7 +200,7 @@ async function main() {
       console.error(paymentsError);
     }
 
-    await sb.from("sync_runs").update({ finished_at: new Date().toISOString(), users_upserted: usersUp, filings_upserted: filingsUp, marketing_merged: merged, error: paymentsError }).eq("id", run.id);
+    await sb.from("sync_runs").update({ finished_at: new Date().toISOString(), users_upserted: usersUp, filings_upserted: filingsUp, marketing_merged: merged, error: [vehiclesError, paymentsError].filter(Boolean).join(" | ") || null }).eq("id", run.id);
     await pool.close();
     log("done");
   } catch (e) {

@@ -41,7 +41,7 @@ export function RetentionAuto({ initial, missing }: { initial: Cfg; missing?: bo
         </div>
         <div>
           <div className="label">When it is created</div>
-          <label className="text-sm">On day <select className="input w-20 h-9 inline-block mx-1" value={cfg.send_day} onChange={(e) => upd({ send_day: +e.target.value })}>{Array.from({ length: 28 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select> of the month</label>
+          <label className="text-sm">On day <select className="input !w-20 h-9 inline-block mx-1" value={cfg.send_day} onChange={(e) => upd({ send_day: +e.target.value })}>{Array.from({ length: 28 }, (_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}</select> of the month</label>
         </div>
         <div>
           <div className="label" id="cap-l">Emails per day</div>
@@ -56,7 +56,7 @@ export function RetentionAuto({ initial, missing }: { initial: Cfg; missing?: bo
       <div className="space-y-4 mb-4">{cfg.steps.map((s, i) => (
         <div key={i} className="border border-line rounded-lg p-4">
           <div className="flex items-center justify-between mb-2"><div className="font-semibold">{i === 0 ? "First email" : `Follow-up ${i}`}</div>
-            {i > 0 && <label className="text-sm flex items-center gap-2">Send <input type="number" min={1} className="input w-16 h-8" value={s.delay_days} onChange={(e) => updStep(i, { delay_days: +e.target.value })} /> days after the previous</label>}</div>
+            {i > 0 && <label className="text-sm flex items-center gap-2">Send <input type="number" min={1} className="input !w-16 h-8" value={s.delay_days} onChange={(e) => updStep(i, { delay_days: +e.target.value })} /> days after the previous</label>}</div>
           <input className="input mb-2" placeholder="Title (the subject line)" value={s.subject} onChange={(e) => updStep(i, { subject: e.target.value })} />
           <button type="button" className="btn-secondary h-9 mb-2" disabled={aiBusy !== null || s.subject.trim().length < 3} onClick={() => ai(i)}>{aiBusy === i ? "Writing…" : "✨ Write with AI"}</button>
           <textarea className="textarea" rows={8} value={s.body_md} onChange={(e) => updStep(i, { body_md: e.target.value })} />
