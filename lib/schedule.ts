@@ -22,3 +22,6 @@ export const centralLabel = (d: Date) =>
 /** Months (1 to 12, Central time) that get the higher daily limit: May, June, July. */
 export const PEAK_MONTHS = [5, 6, 7];
 export const centralMonth = (d: Date) => Number(new Intl.DateTimeFormat("en-US", { timeZone: TZ, month: "numeric" }).format(d));
+const dateParts = new Intl.DateTimeFormat("en-US", { timeZone: TZ, year: "numeric", month: "numeric", day: "numeric" });
+export const centralYear = (d: Date) => Number(dateParts.formatToParts(d).find((p) => p.type === "year")?.value);
+export const centralDay = (d: Date) => Number(dateParts.formatToParts(d).find((p) => p.type === "day")?.value);

@@ -193,6 +193,57 @@ export const KB: KbArticle[] = [
     ],
   },
   {
+    slug: "retention", group: "Dashboard and data", title: "Retention: who comes back",
+    summary: "Who filed in a month, and whether they have filed again.",
+    sections: [
+      { heading: "What it shows", text: "Pick a tax year and a month. The list shows the customers who paid for a return then, and whether they have paid again in the following tax year. For example: filed in April 2027 (TY2026-27), and filed again in TY2027-28." },
+      { heading: "How to read it", steps: [
+        "The four cards: how many filed, how many filed again, how many have not yet, and how many of those are already in a follow-up sequence.",
+        "The By month table: click a month to see only the customers who filed in that month. All months counts each customer once.",
+        "The customer list: Yes with a date means they filed again, and Not yet means they have not. Follow-up shows whether they are in a sequence, unsubscribed or not contacted. Source says System or Imported.",
+      ] },
+      { heading: "What you can do", steps: [
+        "Download CSV: the customers in the selected group, ready for Excel.",
+        "Start renewal campaign: creates a draft for the customers who have not filed again. Review it, test it, then start it.",
+        "Import past filers: add customers who filed with you but are not in the system. See below.",
+      ] },
+      { heading: "Import past filers", steps: [
+        "Prepare an Excel or CSV file with an Email column and a Filed On column. Filed On can be a date, or just a month such as 2027-04.",
+        "Retention, then Import past filers, then Choose file, then Import these filings.",
+        "They join the group for the month they filed, and show as Imported. They do not affect revenue.",
+      ] },
+      { heading: "Which years appear", text: "Retention starts at TY2026-27, the first season on this platform. A group is compared with the following tax year, so TY2026-27 filers are compared with TY2027-28. The numbers fill in as customers file next season." },
+      { heading: "How due dates fit", note: "Form 2290 is an annual return. For vehicles already on the road, the next return is usually due for the new tax period that starts on 1 July, so a customer who filed in April may file again in July or August rather than April. Filed again looks at the whole next tax year, so it is accurate either way." },
+    ],
+  },
+  {
+    slug: "monthly-renewals", group: "Campaigns", title: "Monthly renewals (automatic)",
+    summary: "A renewal campaign created for you every month.",
+    sections: [
+      { heading: "What it does", text: "Once a month it takes the customers who filed in this same month last year (for example everyone who filed in April 2027, when it is April 2028), removes anyone who has already filed in the current tax year, and creates a renewal campaign for the rest. It is separate from your general campaigns." },
+      { heading: "Set it up", steps: [
+        "Dashboard, then Retention, then scroll to Monthly renewals.",
+        "Tick Create it every month, and choose the day of the month (1 is the default).",
+        "Choose Review first (recommended) or Send automatically.",
+        "Edit the two emails. Press Write with AI if you like, then read and change the text.",
+        "Press Save settings.",
+      ] },
+      { heading: "Review first or automatic", steps: [
+        "Review first: each month a draft appears under Ready to review on the Retention page. You open it, check it, send yourself a test and press Start now.",
+        "Send automatically: the campaign starts by itself, within the usual weekday sending hours and daily limits. Use this only once you are happy with the emails.",
+      ] },
+      { heading: "Try it", text: "Press Create this month's renewals now to see exactly what the monthly job would create. Only one is created per month, so a manual run uses up that month's automatic one." },
+      { heading: "Placeholders in the emails", text: "`{{last_filed}}` becomes the month they filed, for example April 2027. `{{tax_year}}` becomes the year they should file in, for example 2027-28. `{{month}}` becomes the current month name." },
+      { heading: "Good to know", steps: [
+        "A daily check runs automatically and only acts once a month, on the day you chose.",
+        "If nobody qualifies, nothing is created, and Last run explains why.",
+        "Unsubscribed, bounced and complained addresses are never included.",
+        "Because this platform started in September 2026, the first month with customers to remind is in 2027.",
+        "It needs `patch-008.sql` in Supabase.",
+      ] },
+    ],
+  },
+  {
     slug: "warm-up", group: "Campaigns", title: "Warm up the sending domain",
     summary: "How to ramp up without landing in spam.",
     sections: [
@@ -219,16 +270,17 @@ export const KB: KbArticle[] = [
   },
   {
     slug: "renewals", group: "Campaigns", title: "Renewal campaigns for returning customers",
-    summary: "Customers who filed last tax year but not this one.",
+    summary: "Email the customers who filed before but have not filed again.",
     sections: [
       { heading: "Steps", steps: [
-        "Dashboard, then Retention. The list shows customers who paid for a return last tax year but not yet this year.",
-        "Use Download CSV if you want the list in Excel.",
-        "Press Start renewal campaign. It creates a draft with three emails and enrolls the customers who are not already in a sequence.",
+        "Dashboard, then Retention. Choose the tax year, then click a month (or All months).",
+        "The list shows who filed then, and whether they have filed again in the next tax year.",
+        "Press Start renewal campaign. It creates a draft for the customers who have not filed again, skipping anyone already in a sequence or unsubscribed.",
         "Open the campaign, send yourself a test, then press Start now or Schedule.",
       ] },
-      { heading: "How people drop out", text: "A customer leaves the campaign as soon as they pay for a return for this tax year. This is checked before every email and at each daily sync." },
-      { heading: "Good to know", note: "This depends on filing history in production. Until older filings are available to the sync, the list will be short." },
+      { heading: "How people drop out", text: "A customer leaves the campaign as soon as they pay for a return in the next tax year. This is checked before every email and at each daily sync." },
+      { heading: "Every month, automatically", text: "See Monthly renewals (automatic) to have this created for you each month." },
+      { heading: "Good to know", note: "This depends on filing history in production. Customers who filed before this platform existed can be added with Import past filers on the Retention page." },
     ],
   },
   {
@@ -240,6 +292,7 @@ export const KB: KbArticle[] = [
         "Month of a return: the month it was paid, taken from the filing's last update date.",
         "Revenue: what Stripe actually collected for TruckTaxPro's service fee, after any discount, in the month it was paid (`PortalFeePayment`). It is not the list price and not the IRS tax. The Filings & revenue page also shows list price, discounts given and the coupons used.",
         "Paying customers: people with at least one paid return.",
+        "Tax years shown: from TY2026-27, the first season on this platform, up to the next season. The next season appears by itself, so TY2027-28 shows now and TY2028-29 appears on 1 July 2027. Earlier years are not shown because there is no data.",
         "Tax year: TY2026-27 means the tax period 1 July 2026 to 30 June 2027. The year shown is the active period.",
         "Registrations: users by the date they signed up (`UserMaster.CreatedDate`). Deleted users are left out.",
         "Became customers: contacts from your lists whose email now exists as a registered user.",
@@ -292,7 +345,7 @@ Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
 git commit -m "Describe the change"
 git push` },
       { heading: "Good to know", steps: [
-        "SQL files so far: `patch-002.sql` (audiences and counts), `patch-003.sql` (scheduling), `patch-004.sql` (daily limits of 700 and 1,000). Each is safe to run again.",
+        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals). Each is safe to run again.",
         "The sync scripts live on the server in `C:\\trucktaxpro-sync`, not in Vercel. Updating them means copying files there.",
       ] },
     ],
@@ -313,6 +366,7 @@ git push` },
         "`EMAIL_FOOTER_REASON` (optional): the line explaining why they receive the email.",
         "`ANTHROPIC_API_KEY`: powers Write with AI.",
         "`SOCIAL_X_URL`, `SOCIAL_INSTAGRAM_URL`, `SOCIAL_FACEBOOK_URL`, `COMPANY_PHONE`: the email footer.",
+        "`FIRST_TAX_YEAR` (optional): the first tax year the dashboard shows. The default is 2026.",
       ] },
     ],
   },

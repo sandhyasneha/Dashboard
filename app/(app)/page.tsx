@@ -2,7 +2,7 @@ import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { PageHeader, Stat, StatusPill } from "@/components/ui";
 import { MonthlyBars, StatusDonut } from "@/components/Charts";
-import { activeTaxYear, campaignsWithStats, filingsSeries, lastSync, money, tyLabel } from "@/lib/dash";
+import { FIRST_TAX_YEAR, activeTaxYear, campaignsWithStats, filingsSeries, lastSync, money, tyLabel } from "@/lib/dash";
 import { n, pct, when } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export default async function Overview() {
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
 
   const [series, prevSeries, status, sync, users, usersThisMonth, filedThisMonth, revThisMonth, leads, customers, month, settings, campaigns, paying] = await Promise.all([
-    filingsSeries(ty), filingsSeries(ty - 1),
+    filingsSeries(ty), ty > FIRST_TAX_YEAR ? filingsSeries(ty - 1) : Promise.resolve(null),
     sb.rpc("dash_status_breakdown", { p_tax_year: ty }),
     lastSync(),
     sb.from("ttp_users").select("user_id", head),
@@ -29,7 +29,7 @@ export default async function Overview() {
   const filedTY = series.reduce((a, r) => a + r.filed, 0);
   const revTY = series.reduce((a, r) => a + r.revenue, 0);
   const revMonth = (revThisMonth.data ?? []).reduce((a: number, r: any) => a + Number(r.amount ?? 0), 0);
-  const merged = series.map((r, i) => ({ ...r, prev_filed: prevSeries[i].filed, prev_revenue: prevSeries[i].revenue }));
+  const merged = series.map((r, i) => ({ ...r, prev_filed: prevSeries?.[i].filed ?? 0, prev_revenue: prevSeries?.[i].revenue ?? 0 }));
 
   return (
     <>
@@ -45,7 +45,7 @@ export default async function Overview() {
       <div className="grid grid-cols-[1.6fr_1fr] gap-6 mb-6">
         <section className="panel p-5">
           <div className="flex items-baseline justify-between mb-3"><h2 className="font-semibold">Paid returns by month</h2><Link href="/dashboard/filings" className="text-sm text-sign font-medium">Details</Link></div>
-          <MonthlyBars data={merged} dataKey="filed" current={tyLabel(ty)} previous={tyLabel(ty - 1)} />
+          <MonthlyBars data={merged} dataKey="filed" current={tyLabel(ty)} previous={prevSeries ? tyLabel(ty - 1) : undefined} />
         </section>
         <section className="panel p-5">
           <h2 className="font-semibold mb-3">Return status · {tyLabel(ty)}</h2>

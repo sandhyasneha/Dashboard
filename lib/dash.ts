@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "./supabase-server";
+import { centralMonth, centralYear } from "./schedule";
 
 export const MONTHS = ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar", "Apr", "May", "Jun"];
 export const tyLabel = (y: number) => `TY${y}-${String(y + 1).slice(2)}`;
@@ -8,12 +9,19 @@ export function tyMonths(taxYear: number) {
   return MONTHS.map((_, i) => { const y = i < 6 ? taxYear : taxYear + 1; const m = (i < 6 ? 7 + i : i - 5); return `${y}-${String(m).padStart(2, "0")}-01`; });
 }
 
-export async function activeTaxYear() {
-  const sb = supabaseAdmin();
-  const { data } = await sb.from("ttp_tax_periods").select("tax_year").eq("is_active", true).order("tax_year", { ascending: false }).limit(1).maybeSingle();
-  if (data?.tax_year) return data.tax_year as number;
-  const now = new Date(); return now.getMonth() + 1 >= 7 ? now.getFullYear() : now.getFullYear() - 1;
+/** The first tax year this platform has data for. Earlier years are not shown. Override with FIRST_TAX_YEAR in Vercel. */
+export const FIRST_TAX_YEAR = Number(process.env.FIRST_TAX_YEAR ?? 2026);
+
+/** Tax years run 1 July to 30 June, so July 2026 to June 2027 is TY2026-27. Follows the calendar (Central time). */
+export function currentTaxYear(now = new Date()) { return centralMonth(now) >= 7 ? centralYear(now) : centralYear(now) - 1; }
+
+/** Years to offer: from the first year up to the one after the current year, so next season appears by itself. */
+export function taxYearChoices(now = new Date()) {
+  const cur = Math.max(FIRST_TAX_YEAR, currentTaxYear(now));
+  const out: number[] = []; for (let y = FIRST_TAX_YEAR; y <= cur + 1; y++) out.push(y); return out;
 }
+
+export async function activeTaxYear() { return Math.max(FIRST_TAX_YEAR, currentTaxYear()); }
 
 export type MonthRow = { month: string; filed: number; revenue: number; vehicles: number };
 
@@ -59,6 +67,23 @@ export async function fetchLapsed(prev: number, curr: number) {
     const { data } = await sb.rpc("dash_lapsed", { p_prev: prev, p_curr: curr }).range(from, from + size - 1);
     if (!data?.length) break;
     out.push(...data);
+    if (data.length < size) break;
+  }
+  return out;
+}
+
+export type CohortRow = {
+  email: string; name: string | null; phone: string | null; cohort_at: string; filings: number; vehicles: number; source: string;
+  returned: boolean; returned_at: string | null; lead_status: string | null; in_sequence: boolean;
+};
+
+/** Everyone who filed in a tax year (optionally one calendar month), and whether they filed again the next tax year. Paged past the 1,000-row cap. */
+export async function fetchCohort(taxYear: number, month: number | null): Promise<CohortRow[]> {
+  const sb = supabaseAdmin(); const out: CohortRow[] = []; const size = 1000;
+  for (let from = 0; ; from += size) {
+    const { data } = await sb.rpc("retention_cohort", { p_tax_year: taxYear, p_month: month }).range(from, from + size - 1);
+    if (!data?.length) break;
+    out.push(...(data as CohortRow[]));
     if (data.length < size) break;
   }
   return out;
