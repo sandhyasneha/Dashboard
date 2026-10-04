@@ -4,7 +4,11 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 const ink = "#1B2431", sign = "#0E6B41", amber = "#C98A00", muted = "#9AA3AE", line = "#D9DDD6";
 const tip = { contentStyle: { border: `1px solid ${line}`, borderRadius: 6, fontSize: 13 }, labelStyle: { fontWeight: 600 } };
 
-export function MonthlyBars({ data, current, previous, dataKey, format }: { data: any[]; current: string; previous?: string; dataKey: "filed" | "revenue" | "vehicles"; format?: (v: number) => string }) {
+const usd = (v: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+
+// "currency" is a plain flag because a server page cannot pass a function to a client component.
+export function MonthlyBars({ data, current, previous, dataKey, currency }: { data: any[]; current: string; previous?: string; dataKey: "filed" | "revenue" | "vehicles"; currency?: boolean }) {
+  const format = currency ? usd : undefined;
   return (
     <ResponsiveContainer width="100%" height={280}>
       <BarChart data={data} barGap={2}>

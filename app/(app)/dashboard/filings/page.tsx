@@ -27,7 +27,7 @@ export default async function Filings({ searchParams }: { searchParams: { ty?: s
         <Stat label="Vehicles on returns" value={sum("vehicles")} sub={delta(sum("vehicles"), sum("vehicles", prev))} />
       </div>
       <section className="panel p-5 mb-6"><h2 className="font-semibold mb-3">Returns completed by month</h2><MonthlyBars data={merged} dataKey="filed" current={tyLabel(ty)} previous={tyLabel(ty - 1)} /></section>
-      <section className="panel p-5 mb-6"><h2 className="font-semibold mb-3">Service-fee revenue by month</h2><MonthlyBars data={merged} dataKey="revenue" current={tyLabel(ty)} previous={tyLabel(ty - 1)} format={(v) => money(v)} /></section>
+      <section className="panel p-5 mb-6"><h2 className="font-semibold mb-3">Service-fee revenue by month</h2><MonthlyBars data={merged} dataKey="revenue" current={tyLabel(ty)} previous={tyLabel(ty - 1)} currency /></section>
       <section className="panel overflow-hidden"><table className="table">
         <thead><tr><th>Month</th><th className="text-right">Returns</th><th className="text-right">{tyLabel(ty - 1)}</th><th className="text-right">Revenue</th><th className="text-right">{tyLabel(ty - 1)}</th><th className="text-right">Vehicles</th></tr></thead>
         <tbody>{merged.map((r) => (<tr key={r.key}><td className="font-medium">{r.month} {r.key.slice(0, 4)}</td><td className="text-right">{n(r.filed)}</td><td className="text-right text-muted">{n(r.prev_filed)}</td><td className="text-right">{money(r.revenue)}</td><td className="text-right text-muted">{money(r.prev_revenue)}</td><td className="text-right">{n(r.vehicles)}</td></tr>))}</tbody>
