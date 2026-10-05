@@ -30,7 +30,7 @@ export const KB: KbArticle[] = [
       { heading: "The routine", steps: [
         "Add leads. Leads, then Import a file for a new list. Your existing contacts arrive by themselves with the daily sync, so you usually skip this.",
         "Create the campaign. Campaigns, then New campaign. Choose who gets it, edit the emails, and use Send test to see each email in your own inbox.",
-        "Send now or schedule. On the right, choose Send now, Schedule for later (pick a date and time), or Save as draft, then press the button and confirm.",
+        "Send now or schedule. On the right, choose Send now, Schedule for later (pick a date and time), or Save as draft, then press the button and confirm. Waiting for approval? Choose Save as draft.",
         "Watch the results on the campaign page: delivered, opened, clicked, bounced. People who file drop out automatically after the next daily sync.",
       ] },
       { heading: "Before the first real send", steps: [
@@ -80,7 +80,7 @@ export const KB: KbArticle[] = [
         "Prospect campaigns: a contact who registers on trucktaxpro.com (after the next daily sync).",
         "Renewal campaigns: a customer who pays for a return for the target tax year.",
       ] },
-      { heading: "Rules", note: "A contact can be in only one campaign at a time, and only contacts with status new are enrolled." },
+      { heading: "Rules", note: "A contact can be in only one campaign at a time, and only contacts with status new are enrolled. A draft reserves its contacts too: free them with Discard draft or End. See Hold, change or stop a campaign." },
     ],
   },
   {
@@ -107,7 +107,7 @@ export const KB: KbArticle[] = [
       { heading: "Three choices", steps: [
         "Send now: the campaign starts at the next sending opening.",
         "Schedule for later: pick a date and time in your computer's time zone. The page shows the same moment in Central time.",
-        "Save as draft: nothing sends until you press Start now or Schedule on the campaign page.",
+        "Save as draft: nothing sends until you press Start now or Schedule on the campaign page. Use it to hold a campaign while you wait for approval.",
       ] },
       { heading: "The sending rules", steps: [
         "Emails go out on weekdays between 9 AM and 5 PM Central only. A time outside that starts at the next opening.",
@@ -117,10 +117,50 @@ export const KB: KbArticle[] = [
       ] },
       { heading: "Controls on a campaign page", steps: [
         "Start now, Schedule or Reschedule, Cancel schedule (back to draft).",
-        "Pause and Resume.",
-        "End stops the campaign for good. Remaining emails are not sent.",
+        "Pause and Resume. Contacts stay in a paused campaign and carry on when you resume.",
+        "End stops the campaign for good. Remaining emails are not sent, and its contacts are released so a new campaign can use them.",
+        "Discard draft (drafts only) deletes the draft and releases its contacts. A campaign that has started cannot be discarded, because it keeps its history: use End.",
       ] },
       { heading: "Time zones", note: "Central is 10.5 hours behind Chennai while daylight saving lasts, so 9 AM Central is 7:30 PM in Chennai. After the clocks change on 1 November it is 11.5 hours, so 9 AM Central is 8:30 PM in Chennai." },
+    ],
+  },
+  {
+    slug: "hold-change-stop", group: "Campaigns", title: "Hold, change or stop a campaign: which button?",
+    summary: "Draft, Pause, End or Discard draft, and what happens to the contacts.",
+    sections: [
+      { heading: "The short answer", steps: [
+        "Waiting for approval, or not ready yet: choose Save as draft and leave it. A draft never sends. Press Start now or Schedule only when you have the go-ahead.",
+        "A short stop on a campaign that is sending: press Pause. Resume carries on where it left off.",
+        "Wrong audience or wrong wording on a draft that has not started: press Discard draft, then create it again.",
+        "Cancel for good a campaign that has started: press End. Emails already sent stay sent.",
+        "Everything must stop right now: Pause every running campaign, and press Cancel schedule on any scheduled one.",
+      ] },
+      { heading: "What happens to the contacts", text: "When a campaign is created, its contacts are reserved for it and show as in sequence. A contact can be in only one campaign at a time, so a draft reserves its contacts too, and no other campaign can use them.",
+        steps: [
+          "Pause: the contacts stay reserved. Resume carries on.",
+          "Cancel schedule (back to a draft): the contacts stay reserved.",
+          "End: remaining emails are not sent, and the contacts are released.",
+          "Discard draft: the draft is deleted, and its contacts are released.",
+          "Released contacts go back to new, so a new campaign can use them.",
+        ], note: "Never released: contacts who unsubscribed, replied, bounced or became customers, and anyone who is still in another live campaign." },
+      { heading: "If marketing changes the plan", steps: [
+        "The campaign has not started: press Discard draft, create the campaign again with the new audience or wording, send yourself a test, and leave it as a draft until it is approved.",
+        "The campaign is already sending: press Pause first, so nothing more goes out while you decide.",
+        "To replace it: press End on the old campaign, then create the new one.",
+      ], note: "Ending a campaign that has already sent emails releases everyone in it, including people who already received an email, so a new campaign will send them its first email again. There is no automatic way yet to skip people who were already emailed. Ask the admin before you press End on a campaign that has sent." },
+      { heading: "Waiting for approval", steps: [
+        "Create the campaign and choose Save as draft.",
+        "Send yourself tests: open the campaign, choose First email (or All emails), type your own address, press Send test. Show the result to the team.",
+        "When it is approved, press Start now or Schedule. For the real customers, start small with Only the first N at 50 a day. See Warm up the sending domain.",
+        "If it is not approved, press Discard draft. That frees the contacts.",
+      ], note: "A test email goes only to the address you type. It enrolls nobody and does not start anything." },
+      { heading: "What each status means", steps: [
+        "draft: not sending. Press Start now or Schedule to begin.",
+        "scheduled: waiting. It starts by itself at the chosen time, so use Cancel schedule if that is no longer wanted.",
+        "running: sending, within weekday hours and the daily limits.",
+        "paused: stopped for now. Resume starts it again.",
+        "completed: finished, or ended. It cannot be restarted.",
+      ], note: "Only running campaigns send." },
     ],
   },
   {
@@ -409,6 +449,18 @@ git push` },
         "Send yourself a test. If it fails, the message names the Resend problem (domain not verified, bad key).",
         "Run the sender by hand and read its answer with the command below.",
       ], code: String.raw`curl.exe -H "Authorization: Bearer <CRON_SECRET>" https://trucktaxpro-filing.com/api/cron/dispatch`, note: "The answer is {\"sent\":{...}} when emails went out, or {\"skipped\":\"weekend\"} or {\"skipped\":\"cap reached\"} with the reason." },
+      { heading: "A new campaign enrolls fewer contacts than I expected", steps: [
+        "Contacts already in a draft, or in a running or paused campaign, are reserved and skipped. Open Campaigns and look for old drafts.",
+        "Press Discard draft on a draft you no longer want, or End on a campaign you no longer need. Both release their contacts.",
+        "Unsubscribed, bounced, complained, replied and customer contacts are never enrolled in a prospect campaign.",
+        "Check the lists you picked, and the Only the first N box.",
+      ] },
+      { heading: "Everything must stop right now", steps: [
+        "Open Campaigns. For each running campaign, open it and press Pause.",
+        "For a scheduled campaign, press Cancel schedule.",
+        "Check the Campaigns list: nothing should say running or scheduled. Test emails can still be sent.",
+        "Later, press Resume or Start now. See Hold, change or stop a campaign.",
+      ] },
       { heading: "Delivered, opened and clicked stay at zero", steps: [
         "In Resend, Webhooks, the endpoint must be `https://trucktaxpro-filing.com/api/webhooks/resend` with all email events ticked.",
         "Its signing secret must match `RESEND_WEBHOOK_SECRET` in Vercel.",

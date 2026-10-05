@@ -13,8 +13,17 @@ export function CampaignControls({ id, status }: { id: string; status: string })
   async function call(body: object) {
     setBusy(true); setErr("");
     const res = await fetch("/api/campaigns", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, ...body }) });
-    if (!res.ok) setErr((await res.json()).error ?? "Something went wrong.");
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) setErr(j.error ?? "Something went wrong."); else if (j.warning) setErr(j.warning);
     setPicking(false); router.refresh(); setBusy(false);
+  }
+  async function discard() {
+    if (!confirm("Discard this draft? It is deleted, and its contacts are released so you can use them in another campaign.")) return;
+    setBusy(true); setErr("");
+    const res = await fetch("/api/campaigns", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) { setErr(j.error ?? "Something went wrong."); setBusy(false); return; }
+    router.push("/campaigns"); router.refresh();
   }
   if (status === "completed") return null;
   const picked = when ? new Date(when) : null;
@@ -23,11 +32,12 @@ export function CampaignControls({ id, status }: { id: string; status: string })
     <div className="relative">
       <div className="flex gap-2">
         {(status === "draft" || status === "scheduled") && <button className="btn-primary" disabled={busy} onClick={() => call({ status: "running" })}>Start now</button>}
+        {status === "draft" && <button className="btn-danger" disabled={busy} onClick={discard}>Discard draft</button>}
         {status === "paused" && <button className="btn-primary" disabled={busy} onClick={() => call({ status: "running" })}>Resume</button>}
         {(status === "draft" || status === "scheduled") && <button className="btn-secondary" disabled={busy} onClick={() => setPicking(!picking)}>{status === "scheduled" ? "Reschedule…" : "Schedule…"}</button>}
         {status === "scheduled" && <button className="btn-secondary" disabled={busy} onClick={() => call({ status: "draft" })}>Cancel schedule</button>}
         {status === "running" && <button className="btn-secondary" disabled={busy} onClick={() => call({ status: "paused" })}>Pause</button>}
-        {(status === "running" || status === "paused" || status === "scheduled") && <button className="btn-danger" disabled={busy} onClick={() => { if (confirm("End this campaign? Remaining emails won't be sent.")) call({ status: "completed" }); }}>End</button>}
+        {(status === "running" || status === "paused" || status === "scheduled") && <button className="btn-danger" disabled={busy} onClick={() => { if (confirm("End this campaign? Remaining emails won't be sent, and its contacts are released so a new campaign can use them.")) call({ status: "completed" }); }}>End</button>}
       </div>
       {picking && (
         <div className="panel p-4 absolute right-0 top-full mt-2 z-20 w-[320px] shadow-card">

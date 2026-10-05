@@ -68,5 +68,27 @@ export async function PATCH(req: Request) {
   }
   const { error } = await supabaseAdmin().from("campaigns").update(next).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (status === "completed") {
+    // Ending a campaign releases its contacts, so a new campaign can use them.
+    const { error: re } = await supabaseAdmin().rpc("release_campaign", { p_campaign_id: id });
+    if (re) return NextResponse.json({ ok: true, warning: `The campaign ended, but its contacts could not be released: ${re.message} (Did you run supabase/patch-010.sql?)` });
+  }
+  return NextResponse.json({ ok: true });
+}
+
+/** DELETE { id } -> discard a draft and release its contacts. Only drafts: a campaign that has started keeps its history, so use End. */
+export async function DELETE(req: Request) {
+  const { data: u } = await supabaseServer().auth.getUser();
+  if (!u.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { id } = await req.json().catch(() => ({}));
+  if (!id) return NextResponse.json({ error: "id is required" }, { status: 400 });
+  const sb = supabaseAdmin();
+  const { data: c } = await sb.from("campaigns").select("id, status").eq("id", id).maybeSingle();
+  if (!c) return NextResponse.json({ error: "Campaign not found." }, { status: 404 });
+  if (c.status !== "draft") return NextResponse.json({ error: "Only a draft can be discarded. Use End for a campaign that has started." }, { status: 400 });
+  const { error: re } = await sb.rpc("release_campaign", { p_campaign_id: id });   // release first: if this fails, nothing is deleted
+  if (re) return NextResponse.json({ error: `${re.message} (Did you run supabase/patch-010.sql?)` }, { status: 500 });
+  const { error } = await sb.from("campaigns").delete().eq("id", id).eq("status", "draft");
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
