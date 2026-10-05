@@ -1,6 +1,11 @@
 // Pure functions (no Node-only imports) so the browser preview and the server render exactly the same email.
 
+/** branded = logo header, orange line and dark footer with icons. plain = the word TruckTaxPro in navy, a plain footer, no images.
+ *  plain-link = plain, and a link on its own line stays a bold link instead of an orange button. */
+export type EmailStyle = "branded" | "plain" | "plain-link";
+
 export type EmailOpts = {
+  style?: EmailStyle;
   logoUrl: string; iconBase: string;
   phone: string; tagline: string; postalAddress: string; reason: string;
   social: { x?: string; instagram?: string; facebook?: string };
@@ -41,15 +46,32 @@ const button = (text: string, url: string) =>
  * a paragraph that is only one link becomes an orange button; lines starting with "- " become a list.
  */
 export function renderEmail(bodyMd: string, unsubscribeUrl: string, o: EmailOpts) {
+  const style = o.style ?? "branded";
   const body = bodyMd.trim().split(/\n\s*\n/).map((p) => {
     const t = p.trim();
     const only = t.match(/^\[(.+?)\]\((https?:\/\/[^\s)]+)\)$/);
+    if (only && style === "plain-link") return `<p style="margin:0 0 18px 0;font-size:16px;line-height:1.65"><a href="${esc(only[2])}" style="color:${NAVY};text-decoration:underline;font-weight:700">${esc(only[1])}</a></p>`;
     if (only) return button(only[1], only[2]);
     const lines = t.split("\n").map((l) => l.trim()).filter(Boolean);
     if (lines.length && lines.every((l) => /^[-*] /.test(l)))
       return `<ul style="margin:0 0 18px 0;padding-left:22px;font-size:16px;line-height:1.65;color:${INK}">${lines.map((l) => `<li style="margin-bottom:6px">${inline(l.replace(/^[-*] /, ""))}</li>`).join("")}</ul>`;
     return `<p style="margin:0 0 18px 0;font-size:16px;line-height:1.65;color:${INK}">${inline(t).replace(/\n/g, "<br/>")}</p>`;
   }).join("");
+
+  if (style !== "branded") {
+    // Plain look: no images, no coloured bands. Everything required by law (address, unsubscribe) stays, as small grey text.
+    const small = "font-size:12px;line-height:1.6;color:#6b7280";
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"></head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:Helvetica,Arial,sans-serif">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:28px 16px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px">
+<tr><td style="padding:0 0 22px 0"><div style="font-size:38px;line-height:1.1;font-weight:800;color:${NAVY};letter-spacing:-0.5px">TruckTaxPro</div></td></tr>
+<tr><td style="padding:0">${body}</td></tr>
+<tr><td style="padding:16px 0 0 0;border-top:1px solid #e3e6ea;${small}">
+${o.phone ? `<div>${esc(o.phone)}</div>` : ""}${o.tagline ? `<div>${esc(o.tagline)}</div>` : ""}${o.postalAddress ? `<div>${esc(o.postalAddress)}</div>` : ""}
+<div style="margin-top:10px">${esc(o.reason)} <a href="${esc(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">Unsubscribe</a></div>
+</td></tr></table></td></tr></table></body></html>`;
+  }
 
   const icons = ([["x", o.social.x, "X"], ["instagram", o.social.instagram, "Instagram"], ["facebook", o.social.facebook, "Facebook"]] as const)
     .filter((s) => s[1])

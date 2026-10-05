@@ -182,10 +182,11 @@ export const KB: KbArticle[] = [
         "Read it, edit it however you like, press Preview this email, then send yourself a test.",
       ], note: "The AI is told to use only basic Form 2290 facts and never to invent prices, dates or turnaround times. You are still responsible for what is sent, so always read it first." },
       { heading: "What the AI needs", text: "A key in Vercel named `ANTHROPIC_API_KEY`, created at console.anthropic.com, with credit on that account. It uses a small, low-cost model, so each draft costs very little. If it shows an error, the message names the reason." },
-      { heading: "How every email looks", text: "A navy header with the TruckTaxPro logo and an orange line, your text, and a dark footer with the phone number, social icons, the tagline, the postal address and the unsubscribe link. A paragraph that is only a link becomes an orange button." },
+      { heading: "How every email looks", text: "By default every email is plain: the word TruckTaxPro in big bold navy at the top, your text, and a plain footer with the phone number, tagline, postal address and the Unsubscribe link. There are no images, which makes Gmail less likely to file it under Promotions. A line that is only a link still becomes an orange button. Two other looks are available with the setting `NEXT_PUBLIC_EMAIL_STYLE`: `plain-link` (the button becomes a plain bold link) and `branded` (the earlier look with the logo header, orange line and dark footer with icons)." },
       { heading: "Footer settings (in Vercel)", steps: [
         "`COMPANY_POSTAL_ADDRESS`: required in every marketing email. Sending pauses until it is set.",
-        "`SOCIAL_X_URL`, `SOCIAL_INSTAGRAM_URL`, `SOCIAL_FACEBOOK_URL`: each icon appears only when its link is set.",
+        "`NEXT_PUBLIC_EMAIL_STYLE` (optional): `plain` (the default), `plain-link` or `branded`. Change it in Vercel, then redeploy. The preview, test emails and real sends all follow it.",
+        "`SOCIAL_X_URL`, `SOCIAL_INSTAGRAM_URL`, `SOCIAL_FACEBOOK_URL`: each icon appears only when its link is set, and only in the branded look.",
         "`COMPANY_PHONE` (optional): defaults to +1-972-810-3393.",
         "`EMAIL_FOOTER_REASON` (optional): the line saying why they receive the email.",
       ] },
