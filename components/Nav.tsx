@@ -7,6 +7,7 @@ const sections = [
   { title: "Dashboard", items: [
     { href: "/", label: "Overview" },
     { href: "/dashboard/filings", label: "Filings & revenue" },
+    { href: "/dashboard/customer-list", label: "Customers" },
     { href: "/dashboard/customers", label: "Customer growth" },
     { href: "/dashboard/retention", label: "Retention" },
   ]},

@@ -112,6 +112,29 @@ async function main() {
       console.error(vehiclesError);
     }
 
+    // 3c. Company (business) name per return, for the Customers list. Optional: runs only when COMPANY_QUERY is set in .env.
+    //     COMPANY_QUERY is one read-only SELECT returning two columns named FilingId and Company. Non-fatal, like the steps above.
+    let companyError = null;
+    const companyQuery = env("COMPANY_QUERY", "").trim();
+    if (companyQuery) {
+      try {
+        if (!/^select\s/i.test(companyQuery) || /;|--|\/\*|\b(insert|update|delete|merge|drop|alter|exec|execute|create|truncate|grant|into)\b/i.test(companyQuery))
+          throw new Error("COMPANY_QUERY must be a single SELECT");
+        const found = (await pool.request().query(GUARD + companyQuery)).recordset;
+        const names = found.filter((r) => r.FilingId != null).map((r) => ({ filing_id: Number(r.FilingId), company: r.Company == null ? null : String(r.Company).trim().slice(0, 200) }));
+        let changed = 0;
+        for (const part of chunk(names, 5000)) {
+          const { data, error } = await sb.rpc("apply_company_names", { p_rows: part });
+          if (error) throw new Error(error.message);
+          changed += Number(data ?? 0);
+        }
+        log("company names read for", names.length, "returns;", changed, "changed");
+      } catch (e) {
+        companyError = "Company step: " + String(e.message ?? e) + " (run patch-011.sql in Supabase and grant sync_user SELECT on the company column)";
+        console.error(companyError);
+      }
+    }
+
     // 4. Local insert: every registered user becomes an EmailMarketingCustomer (one SQL statement, no app roundtrip).
     //    If EmailMarketingCustomerId is not an IDENTITY column (e.g. the table came from an import), number the new rows ourselves.
     const isIdentity = (await pool.request().query(
@@ -200,12 +223,18 @@ async function main() {
       console.error(paymentsError);
     }
 
-    await sb.from("sync_runs").update({ finished_at: new Date().toISOString(), users_upserted: usersUp, filings_upserted: filingsUp, marketing_merged: merged, error: [vehiclesError, paymentsError].filter(Boolean).join(" | ") || null }).eq("id", run.id);
+    await sb.from("sync_runs").update({ finished_at: new Date().toISOString(), users_upserted: usersUp, filings_upserted: filingsUp, marketing_merged: merged, error: [vehiclesError, companyError, paymentsError].filter(Boolean).join(" | ") || null }).eq("id", run.id);
     await pool.close();
     log("done");
   } catch (e) {
     console.error(e);
-    await sb.from("sync_runs").update({ finished_at: new Date().toISOString(), error: String(e.message ?? e) }).eq("id", run.id);
+    let message = String(e.message ?? e);
+    // The usual cause on the InterServer box: MSSQL_MODE=local is missing from .env, so the sync tried TCP/IP, which is switched off there.
+    if (/Failed to connect|Port for .* not found/i.test(message) && env("MSSQL_MODE", "tcp") !== "local") {
+      message += " | Hint: on the InterServer box, .env must contain MSSQL_MODE=local (TCP/IP is meant to stay off).";
+      console.error(message);
+    }
+    await sb.from("sync_runs").update({ finished_at: new Date().toISOString(), error: message }).eq("id", run.id);
     process.exit(1);
   }
 }

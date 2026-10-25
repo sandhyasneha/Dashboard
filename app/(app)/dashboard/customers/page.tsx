@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { PageHeader, Stat } from "@/components/ui";
 import { GrowthLine } from "@/components/Charts";
@@ -29,7 +30,7 @@ export default async function CustomerGrowth() {
         <Stat label="Users who completed a return" value={uniqueFilers} tone="sign" sub={pct(uniqueFilers, total.count ?? 0) + " of users"} />
       </div>
       <section className="panel p-5 mb-6"><h2 className="font-semibold mb-3">Registrations by month</h2>{data.length ? <GrowthLine data={data} /> : <p className="text-sm text-muted py-10 text-center">No user data yet — run the sync.</p>}</section>
-      <section className="panel"><div className="px-5 py-4 border-b border-line"><h2 className="font-semibold">Latest registrations</h2></div>
+      <section className="panel"><div className="px-5 py-4 border-b border-line flex items-baseline justify-between"><h2 className="font-semibold">Latest registrations</h2><Link href="/dashboard/customer-list" className="text-sm text-sign font-medium">See all customers</Link></div>
         <table className="table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Registered</th></tr></thead>
           <tbody>{(recent.data ?? []).map((u: any) => <tr key={u.email}><td className="font-medium">{u.name ?? "—"}</td><td className="text-muted">{u.email}</td><td className="text-muted">{u.phone ?? "—"}</td><td className="text-muted">{when(u.registered_at)}</td></tr>)}</tbody></table>
         {!recent.data?.length && <p className="px-5 py-8 text-sm text-muted">Nothing synced yet.</p>}</section>

@@ -38,7 +38,7 @@ export default async function Overview() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         <Stat label={`Paid returns · ${tyLabel(ty)}`} value={filedTY} tone="sign" sub={`${n(filedThisMonth.count ?? 0)} this month`} />
         <Stat label="Service-fee revenue" value={money(revTY)} tone="sign" sub={`${money(revMonth)} this month`} />
-        <Stat label="Registered users" value={users.count ?? 0} sub={`${n(usersThisMonth.count ?? 0)} new this month`} />
+        <Link href="/dashboard/customer-list" className="block rounded-lg hover:ring-2 hover:ring-sign/30" title="See every customer"><Stat label="Registered users" value={users.count ?? 0} sub={`${n(usersThisMonth.count ?? 0)} new this month · see the list`} /></Link>
         <Stat label="Paying customers" value={Number(paying.data ?? 0)} tone="sign" sub={`${pct(Number(paying.data ?? 0), users.count ?? 0)} of registered users`} />
       </div>
 
