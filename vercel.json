@@ -1,1 +1,1 @@
-{ "crons": [ { "path": "/api/cron/dispatch", "schedule": "*/15 * * * *" }, { "path": "/api/cron/retention", "schedule": "0 14 * * *" } ] }
+{"crons": [{"path": "/api/cron/dispatch", "schedule": "*/15 * * * *"}, {"path": "/api/cron/retention", "schedule": "0 14 * * *"}, {"path": "/api/cron/sync-alert", "schedule": "30 16 * * *"}]}
