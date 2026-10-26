@@ -135,6 +135,14 @@ export const KB: KbArticle[] = [
         "Cancel for good a campaign that has started: press End. Emails already sent stay sent.",
         "Everything must stop right now: Settings, then Hold all sending. It stops every campaign, including automatic reminders, until you release it.",
       ] },
+      { heading: "Hold all sending (the master switch)", text: "Settings, then Hold all sending. While it is on, no campaign email is sent at all: not general campaigns, not renewals, not automatic reminders. Scheduled campaigns wait. Test emails still work. It was switched on when it was added, to match the hold until Marketing confirms.",
+        steps: [
+          "It is not a review step: nothing is queued for you to send one by one. Campaigns simply wait.",
+          "You can still prepare everything during the hold: build campaigns as drafts, send tests, even press Start now. Nothing goes out until the hold is released.",
+          "Release the hold: running campaigns carry on at the next run (within 15 minutes), during weekday sending hours.",
+          "Press Hold all sending again at any time to stop everything. Campaigns keep their place and continue when you release it.",
+          "Every change is recorded with who made it and when.",
+        ] },
       { heading: "What happens to the contacts", text: "When a campaign is created, its contacts are reserved for it and show as in sequence. A contact can be in only one campaign at a time, so a draft reserves its contacts too, and no other campaign can use them.",
         steps: [
           "Pause: the contacts stay reserved. Resume carries on.",
@@ -294,12 +302,18 @@ export const KB: KbArticle[] = [
         "Each person gets at most two emails per reminder: the first the day after they qualify, the second a few days later (3 by default).",
         "Unsubscribed, bounced and complained addresses are never included.",
       ] },
-      { heading: "Set it up", steps: [
-        "Dashboard, then Customers, then scroll to Automatic reminders.",
-        "Read the emails (Edit the emails). Change the wording if Marketing wants to.",
-        "Tick Add new people every day, choose Emails per day, and press Save settings. Save and add today's people now runs it at once.",
-        "Two campaigns appear in Campaigns as drafts. Open each one, send yourself a test, and press Start now.",
-        "Nothing is emailed while Hold all sending is on (Settings).",
+      { heading: "When an email actually goes out", text: "Only when all three are true:", steps: [
+        "Hold all sending is released (Settings). While it is on, nothing is sent at all.",
+        "The reminder campaign is Running: you pressed Start now on it once. A draft never sends.",
+        "It is a weekday between 9 AM and 5 PM Central, within the daily limits.",
+      ], note: "Adding people happens automatically every day, even during the hold. They simply wait in the queue until the gates above are open." },
+      { heading: "Step by step, from now to automatic", steps: [
+        "Switch it on: Dashboard, then Customers, then Automatic reminders. Tick Add new people every day, choose Emails per day, and press Save and add today's people now.",
+        "Every day after the sync, new people are added to the two reminder campaigns by themselves. Nothing is emailed yet.",
+        "Review: Marketing opens each reminder campaign in Campaigns (or from the links on the panel) and reads the two emails. Send yourself a test from the campaign page. To change the wording, use Edit the emails on the panel and press Save settings.",
+        "Approve: press Start now on each reminder campaign. Still nothing is sent while the hold is on.",
+        "When Marketing confirms: Settings, then Release the hold.",
+        "From then on it is fully automatic: new people are added daily, emailed on the next weekday during sending hours, and the second email follows a few days later. Anyone who starts or pays leaves by themselves. Nobody has to press anything again.",
       ] },
       { heading: "How it runs", steps: [
         "Every day after the morning sync, the people who qualify that day are added to the reminder campaigns.",
