@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { PageHeader } from "@/components/ui";
 import { SettingsForm } from "@/components/SettingsForm";
 import { SyncAlertTest } from "@/components/SyncAlertTest";
+import { HoldSwitch } from "@/components/HoldSwitch";
 import { alertRecipients, syncHealth } from "@/lib/syncAlert";
 import { when } from "@/lib/format";
 
@@ -20,7 +21,10 @@ export default async function Settings() {
     <>
       <PageHeader title="Settings" />
       <div className="grid grid-cols-[1fr_1fr] gap-6 items-start">
+        <div className="space-y-6">
+        <HoldSwitch hold={s?.hold_all !== false} changedAt={s?.hold_changed_at ?? null} missing={!!s && !("hold_all" in s)} />
         <SettingsForm dailyCap={s?.global_daily_cap ?? 700} peakCap={s?.peak_daily_cap ?? 1000} monthlyCap={s?.monthly_cap ?? 50000} />
+        </div>
         <div className="space-y-6">
           <section className="panel p-6">
             <h2 className="font-semibold mb-2">Production data</h2>

@@ -15,6 +15,10 @@ export async function GET(req: Request) {
   const app = process.env.NEXT_PUBLIC_APP_URL!;
   if (!process.env.COMPANY_POSTAL_ADDRESS) return NextResponse.json({ skipped: "COMPANY_POSTAL_ADDRESS is not set in Vercel. Every marketing email must carry your postal address, so sending is paused until it is added." });
 
+  // Hold all sending (Settings): nothing is sent and scheduled campaigns wait. A missing setting counts as ON, to fail safe.
+  const { data: hold, error: holdErr } = await sb.from("settings").select("hold_all").eq("id", 1).maybeSingle();
+  if (holdErr || !hold || hold.hold_all !== false) return NextResponse.json({ skipped: holdErr ? "hold setting unreadable (run supabase/patch-013.sql); sending stays held" : "Hold all sending is on" });
+
   // Campaigns scheduled for a time that has now arrived start sending (the window and caps below still apply).
   await sb.from("campaigns").update({ status: "running", scheduled_at: null }).eq("status", "scheduled").lte("scheduled_at", new Date().toISOString());
 
@@ -71,11 +75,22 @@ export async function GET(req: Request) {
         if (!lead || ["bounced", "unsubscribed", "complained", "replied"].includes(lead.status)) {
           await sb.from("enrollments").update({ status: "exited_unsub" }).eq("id", e.id); continue;
         }
-        if (c.kind !== "renewal" && lead.is_customer) {
+        if (c.kind === "reminder") {
+          // Registered, no return: leaves once they start any return. Started, not paid: leaves once they pay, or the draft is gone.
+          const email = String(lead.email).toLowerCase();
+          const count = async (q: any) => ((await q).count ?? 0) as number;
+          const filings = () => sb.from("ttp_filings").select("filing_id", { count: "exact", head: true }).eq("email", email);
+          const done = c.auto_source === "reminder:unpaid"
+            ? (await count(filings().eq("tax_year", c.target_tax_year).not("paid_at", "is", null))) > 0
+              || (await count(filings().eq("tax_year", c.target_tax_year).eq("status_id", 1))) === 0
+            : (await count(filings())) > 0;
+          if (done) { await sb.from("enrollments").update({ status: "exited_customer" }).eq("id", e.id); continue; }
+        } else if (c.kind !== "renewal" && lead.is_customer) {
           await sb.from("enrollments").update({ status: "exited_customer" }).eq("id", e.id); continue;
         }
         if (c.kind === "renewal" && c.target_tax_year) {
-          const { count: filedNow } = await sb.from("ttp_filings").select("filing_id", { count: "exact", head: true }).eq("status_id", 4).eq("tax_year", c.target_tax_year).ilike("email", lead.email);
+          // Paid (any paid status), matching the dashboard's definition, not only Completed.
+          const { count: filedNow } = await sb.from("ttp_filings").select("filing_id", { count: "exact", head: true }).not("paid_at", "is", null).eq("tax_year", c.target_tax_year).eq("email", String(lead.email).toLowerCase());
           if ((filedNow ?? 0) > 0) { await sb.from("enrollments").update({ status: "exited_customer" }).eq("id", e.id); continue; }
         }
         const step = steps.find((s) => s.position === nextPos);
@@ -121,7 +136,8 @@ export async function GET(req: Request) {
     budget -= sentHere; report[c.name] = sentHere;
 
     const { count: stillActive } = await sb.from("enrollments").select("id", { count: "exact", head: true }).eq("campaign_id", c.id).eq("status", "active");
-    if ((stillActive ?? 0) === 0) await sb.from("campaigns").update({ status: "completed" }).eq("id", c.id);
+    // Reminder campaigns stay open: the daily job keeps adding new people to them.
+    if ((stillActive ?? 0) === 0 && c.kind !== "reminder") await sb.from("campaigns").update({ status: "completed" }).eq("id", c.id);
     if (runFailed || budget <= 0) break;
   }
   return NextResponse.json({ sent: report, ...(runFailed ? { warning: "Resend rejected a batch. Those emails will be retried on the next run." } : {}) });

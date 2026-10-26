@@ -7,6 +7,8 @@ import { TestSend } from "@/components/TestSend";
 import { centralLabel } from "@/lib/schedule";
 import { DailyLimit } from "@/components/DailyLimit";
 import { TestSendsPanel } from "@/components/TestSendsPanel";
+import { HoldBanner } from "@/components/HoldBanner";
+import Link from "next/link";
 import { n, pct, when, titleCase } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +36,8 @@ export default async function CampaignPage({ params }: { params: { id: string } 
       <PageHeader title={c.name} sub={`Created ${when(c.created_at)} · up to ${n(c.daily_cap)} emails a day${c.status === "scheduled" && c.scheduled_at ? ` · starts ${centralLabel(new Date(c.scheduled_at))}` : ""}`}
         action={<div className="flex items-center gap-3"><StatusPill status={c.status} /><CampaignControls id={c.id} status={c.status} /></div>} />
 
+      <HoldBanner />
+      {c.kind === "reminder" && <div className="panel p-4 mb-6 text-sm">Automatic reminder. New people are added every day while reminders are switched on. To change the emails, use <Link href="/dashboard/customer-list#reminders" className="text-sign font-medium hover:underline">Customers, Automatic reminders</Link>.</div>}
       {c.status !== "completed" && <DailyLimit id={c.id} value={c.daily_cap} />}
 
       <div className="grid grid-cols-5 gap-4 mb-8">
@@ -46,7 +50,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
 
       <section className="panel p-6 mb-8">
         <h2 className="font-semibold mb-1">Sequence</h2>
-        <p className="text-sm text-muted mb-6">Carriers move along the road; anyone who files on trucktaxpro.com exits early.</p>
+        <p className="text-sm text-muted mb-6">{c.kind === "reminder" ? (c.auto_source === "reminder:unpaid" ? "Anyone who pays for their return leaves straight away." : "Anyone who starts a return leaves straight away.") : "Carriers move along the road; anyone who files on trucktaxpro.com exits early."}</p>
         <SequenceRoad steps={(steps ?? []).map((st, i) => ({ label: i === 0 ? "First email" : `Follow-up ${i}`, subject: st.subject, delay: st.delay_days, count: perStep[i] }))} enrolled={s.enrolled} converted={s.converted} bounced={s.bounced} />
         <TestSend campaignId={c.id} steps={(steps ?? []).length} />
       </section>

@@ -3,6 +3,7 @@ import { PageHeader, StatusPill, Empty } from "@/components/ui";
 import { n, pct } from "@/lib/format";
 import { campaignsWithStats } from "@/lib/dash";
 import { centralLabel } from "@/lib/schedule";
+import { HoldBanner } from "@/components/HoldBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function Campaigns() {
   return (
     <>
       <PageHeader title="Campaigns" sub="Each campaign is a sequence of emails sent a few days apart." action={<Link href="/campaigns/new" className="btn-primary">New campaign</Link>} />
+      <HoldBanner />
       <div className="grid grid-cols-3 gap-4 mb-6">
         {flow.map((f) => (
           <Link key={f.n} href={f.href} className="panel p-4 hover:bg-slate block">

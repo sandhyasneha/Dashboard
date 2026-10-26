@@ -2,6 +2,10 @@ import Link from "next/link";
 import { PageHeader, Stat, Empty } from "@/components/ui";
 import { Pager } from "@/components/Pager";
 import { RetentionImport } from "@/components/RetentionImport";
+import { ReminderPanel } from "@/components/ReminderPanel";
+import { supabaseAdmin } from "@/lib/supabase-server";
+import { activeTaxYear } from "@/lib/dash";
+import { loadReminderConfig, openReminderCampaign } from "@/lib/reminders";
 import { customerPage, customerSummary, filterParams, readFilters } from "@/lib/customers";
 import { MONTH_SHORT, SEASON, SOURCES, STATUSES, monthsText, tyText } from "@/lib/customerFields";
 import { n, when } from "@/lib/format";
@@ -15,7 +19,16 @@ const STATUS_TONE: Record<string, string> = {
 
 export default async function CustomerList({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   const f = readFilters(searchParams);
-  const [sum, list] = await Promise.all([customerSummary(), customerPage(f, Number(searchParams.p))]);
+  const sb = supabaseAdmin(); const ty = await activeTaxYear();
+  const [sum, list, settings, campReg, campUnpaid] = await Promise.all([
+    customerSummary(), customerPage(f, Number(searchParams.p)),
+    sb.from("settings").select("*").eq("id", 1).maybeSingle(),
+    openReminderCampaign("registered", ty), openReminderCampaign("unpaid", ty),
+  ]);
+  const waiting = async (id?: string) => id ? ((await sb.from("enrollments").select("id", { count: "exact", head: true }).eq("campaign_id", id).eq("status", "active")).count ?? 0) : 0;
+  const [waitReg, waitUnpaid] = await Promise.all([waiting(campReg?.id), waiting(campUnpaid?.id)]);
+  const st = settings.data as any;
+  const remindersMissing = !st || !("reminders" in st);
   const params = filterParams(f);
   const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v) as [string, string][]).toString();
   const filtered = !!(f.q || f.status || f.source || f.ty || f.m);
@@ -86,6 +99,9 @@ export default async function CustomerList({ searchParams }: { searchParams: Rec
         The annual renewal for every customer is due by 31 August; a truck first used in another month is due by the end of the following month.
         <strong> Source</strong>: Existing lead = was on your contact list before signing up; New = was not; Past customer = signed up before the contact list was loaded; Imported = only in an import file.
       </p>
+
+      <ReminderPanel initial={loadReminderConfig(st?.reminders)} campaigns={{ registered: campReg, unpaid: campUnpaid }} waiting={{ registered: waitReg, unpaid: waitUnpaid }}
+        lastResult={st?.reminders_last_result ?? null} hold={st?.hold_all !== false} missing={remindersMissing} />
 
       <RetentionImport />
     </>

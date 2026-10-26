@@ -133,7 +133,7 @@ export const KB: KbArticle[] = [
         "A short stop on a campaign that is sending: press Pause. Resume carries on where it left off.",
         "Wrong audience or wrong wording on a draft that has not started: press Discard draft, then create it again.",
         "Cancel for good a campaign that has started: press End. Emails already sent stay sent.",
-        "Everything must stop right now: Pause every running campaign, and press Cancel schedule on any scheduled one.",
+        "Everything must stop right now: Settings, then Hold all sending. It stops every campaign, including automatic reminders, until you release it.",
       ] },
       { heading: "What happens to the contacts", text: "When a campaign is created, its contacts are reserved for it and show as in sequence. A contact can be in only one campaign at a time, so a draft reserves its contacts too, and no other campaign can use them.",
         steps: [
@@ -285,6 +285,32 @@ export const KB: KbArticle[] = [
     ],
   },
   {
+    slug: "reminders", group: "Campaigns", title: "Automatic reminders: registered, or started but not paid",
+    summary: "Two reminder emails for people who signed up or started a return but did not finish.",
+    sections: [
+      { heading: "Who gets them", steps: [
+        "Registered, no return started: signed up 1 to 60 days ago and has not started a return. They leave as soon as they start one.",
+        "Started a return, not paid: has a draft return in the current tax year, started 1 to 60 days ago, with nothing paid. They leave as soon as they pay.",
+        "Each person gets at most two emails per reminder: the first the day after they qualify, the second a few days later (3 by default).",
+        "Unsubscribed, bounced and complained addresses are never included.",
+      ] },
+      { heading: "Set it up", steps: [
+        "Dashboard, then Customers, then scroll to Automatic reminders.",
+        "Read the emails (Edit the emails). Change the wording if Marketing wants to.",
+        "Tick Add new people every day, choose Emails per day, and press Save settings. Save and add today's people now runs it at once.",
+        "Two campaigns appear in Campaigns as drafts. Open each one, send yourself a test, and press Start now.",
+        "Nothing is emailed while Hold all sending is on (Settings).",
+      ] },
+      { heading: "How it runs", steps: [
+        "Every day after the morning sync, the people who qualify that day are added to the reminder campaigns.",
+        "The campaigns stay open (they never complete by themselves), and send within the usual weekday hours and limits.",
+        "Started, not paid has one campaign per tax year, so a customer can be reminded again next season.",
+        "To stop: untick Add new people every day and save, and press Pause on the campaigns. Editing the emails updates them for everyone still waiting.",
+      ] },
+      { heading: "Good to know", text: "Needs `patch-013.sql` in Supabase." },
+    ],
+  },
+  {
     slug: "monthly-renewals", group: "Campaigns", title: "Monthly renewals (automatic)",
     summary: "A renewal campaign created for you every month.",
     sections: [
@@ -424,7 +450,7 @@ Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
 git commit -m "Describe the change"
 git push` },
       { heading: "Good to know", steps: [
-        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals), `009` (vehicle counts), `010` (End and Discard release contacts), `011` (Customers list and the richer import), `012` (sync alerts). Each is safe to run again. Never run `schema.sql`: it is the master copy only.",
+        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals), `009` (vehicle counts), `010` (End and Discard release contacts), `011` (Customers list and the richer import), `012` (sync alerts), `013` (Hold all sending and automatic reminders). Each is safe to run again. Never run `schema.sql`: it is the master copy only.",
         "The sync scripts live on the server in `C:\\trucktaxpro-sync`, not in Vercel. Updating them means copying files there.",
       ] },
     ],
@@ -492,10 +518,9 @@ git push` },
         "Check the lists you picked, and the Only the first N box.",
       ] },
       { heading: "Everything must stop right now", steps: [
-        "Open Campaigns. For each running campaign, open it and press Pause.",
-        "For a scheduled campaign, press Cancel schedule.",
-        "Check the Campaigns list: nothing should say running or scheduled. Test emails can still be sent.",
-        "Later, press Resume or Start now. See Hold, change or stop a campaign.",
+        "Settings, then Hold all sending. From the next run (within 15 minutes) no campaign email goes out, including automatic reminders, and scheduled campaigns wait. Test emails still work.",
+        "Campaigns keep their place: when you press Release the hold, they carry on where they stopped.",
+        "To stop one campaign only, open it and press Pause. See Hold, change or stop a campaign.",
       ] },
       { heading: "Delivered, opened and clicked stay at zero", steps: [
         "In Resend, Webhooks, the endpoint must be `https://trucktaxpro-filing.com/api/webhooks/resend` with all email events ticked.",
