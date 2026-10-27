@@ -74,7 +74,7 @@ export const KB: KbArticle[] = [
         "3. When to send. Choose Send now, Schedule for later or Save as draft. Set Emails per day.",
         "Press the button at the bottom right. For Send now and Schedule you are asked to confirm the numbers.",
       ] },
-      { heading: "Writing the emails", text: "Contacts only have an email address and sometimes a phone number, so emails open with Hi there and do not use names or other details. A blank line starts a new paragraph, a line with only a link becomes an orange button, and **bold** works. See Templates, the AI writer and email design." },
+      { heading: "Writing the emails", text: "Contacts only have an email address and sometimes a phone number, so emails open with Hi there and do not use names or other details. A blank line starts a new paragraph, and **bold** works. Links: `[File now](https://trucktaxpro.com)` alone on its own line becomes an orange button; the same inside a sentence becomes underlined words; a web address typed as plain text (https://trucktaxpro.com or www.trucktaxpro.com) becomes a clickable link. See Templates, the AI writer and email design." },
       { heading: "Who leaves a campaign", steps: [
         "Anyone who unsubscribes, bounces or complains, immediately.",
         "Prospect campaigns: a contact who registers on trucktaxpro.com (after the next daily sync).",

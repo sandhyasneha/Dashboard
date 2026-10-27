@@ -125,7 +125,7 @@ export function CampaignBuilder({ fresh, everyone }: { fresh: Counts; everyone: 
               <option value="">Choose a template…</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
-          <p className="text-sm text-muted mb-4">Edit anything, or type a title and press <strong>Write with AI</strong>. A blank line starts a new paragraph. A line with only a link becomes an orange button. **bold** works. The footer (phone, address and Unsubscribe link) is added to every email automatically. Check dates and claims before you send.</p>
+          <p className="text-sm text-muted mb-4">Edit anything, or type a title and press <strong>Write with AI</strong>. A blank line starts a new paragraph. A line with only a link written as [button text](https://…) becomes an orange button. A web address typed as plain text becomes a clickable link. **bold** works. The footer (phone, address and Unsubscribe link) is added to every email automatically. Check dates and claims before you send.</p>
           <div className="mb-5 p-3 bg-slate rounded-md">
             <div className="flex flex-wrap items-center gap-3">
               <label className="text-sm font-medium" htmlFor="testto">Test addresses</label>

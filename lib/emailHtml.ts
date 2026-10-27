@@ -33,10 +33,14 @@ export function fill(text: string, v: LeadVars) {
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const link = (text: string, url: string) => `<a href="${url}" style="color:${NAVY};text-decoration:underline;font-weight:600">${text}</a>`;
+// A web address typed as plain text (https://… or www.…) becomes a clickable link too. Trailing punctuation stays outside the link.
+const BARE = /(https?:\/\/[^\s<\[\]()]+[^\s<\[\]().,;:!?'"]|\bwww\.[^\s<\[\]()]+[^\s<\[\]().,;:!?'"])/;
 const inline = (t: string) =>
   esc(t)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, (_m, text, url) => `<a href="${url}" style="color:${NAVY};text-decoration:underline;font-weight:600">${text}</a>`);
+    .replace(new RegExp(String.raw`\[(.+?)\]\((https?:\/\/[^\s)]+)\)|` + BARE.source, "g"),
+      (_m, text, url, bare) => (text ? link(text, url) : link(bare, bare.startsWith("www.") ? "https://" + bare : bare)));
 
 const button = (text: string, url: string) =>
   `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 26px 0"><tr><td bgcolor="${ORANGE}" style="background:${ORANGE};border-radius:6px"><a href="${esc(url)}" style="display:inline-block;padding:15px 30px;font-size:16px;font-weight:700;color:${NAVY};background:${ORANGE};text-decoration:none;border-radius:6px;font-family:Helvetica,Arial,sans-serif">${esc(text)}</a></td></tr></table>`;
