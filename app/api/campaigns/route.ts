@@ -34,8 +34,9 @@ export async function POST(req: Request) {
   const { error: se } = await sb.from("campaign_steps").insert(steps);
   if (se) return NextResponse.json({ error: se.message }, { status: 500 });
 
-  const { data: enrolled, error: ee } = await sb.rpc("enroll_campaign", { p_campaign_id: c.id, p_limit: limit });
-  if (ee) return NextResponse.json({ error: `Campaign saved as a draft, but enrolment failed: ${ee.message}. Did you run supabase/patch-003.sql?` }, { status: 500 });
+  // Contacts who already received a campaign email are skipped unless the builder's box was unticked.
+  const { data: enrolled, error: ee } = await sb.rpc("enroll_campaign", { p_campaign_id: c.id, p_limit: limit, p_skip_emailed: body.skip_emailed !== false });
+  if (ee) return NextResponse.json({ error: `Campaign saved as a draft, but enrolment failed: ${ee.message}. Did you run supabase/patch-014.sql?` }, { status: 500 });
 
   let status = "draft";
   if (mode === "now" || (scheduledAt && scheduledAt <= new Date())) status = "running";

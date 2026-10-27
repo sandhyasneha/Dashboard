@@ -68,7 +68,7 @@ export const KB: KbArticle[] = [
     sections: [
       { heading: "Steps", steps: [
         "Campaigns, then New campaign. Give it a name.",
-        "1. Who gets it. Click lists to narrow it, or leave them unselected for everyone. Use Only the first to roll out in batches.",
+        "1. Who gets it. Click lists to narrow it, or leave them unselected for everyone. Use Only the first to roll out in batches. Keep Skip contacts who already received a campaign email ticked, so nobody gets a first email twice.",
         "2. What you send. Start from a template (2290 filing due date, Prefile 2290 starts now, We accept 2290 for TY2027-28, or Blank). Edit any word, or type a title and press Write with AI. Use Preview this email to see the finished email.",
         "Send yourself a test of each email, or all of them at once.",
         "3. When to send. Choose Send now, Schedule for later or Save as draft. Set Emails per day.",
@@ -155,7 +155,7 @@ export const KB: KbArticle[] = [
         "The campaign has not started: press Discard draft, create the campaign again with the new audience or wording, send yourself a test, and leave it as a draft until it is approved.",
         "The campaign is already sending: press Pause first, so nothing more goes out while you decide.",
         "To replace it: press End on the old campaign, then create the new one.",
-      ], note: "Ending a campaign that has already sent emails releases everyone in it, including people who already received an email, so a new campaign will send them its first email again. There is no automatic way yet to skip people who were already emailed. Ask the admin before you press End on a campaign that has sent." },
+      ], note: "Ending a campaign that has already sent emails releases everyone in it. A new campaign skips the people who already received an email, as long as Skip contacts who already received a campaign email stays ticked (it is ticked by default)." },
       { heading: "Waiting for approval", steps: [
         "Create the campaign and choose Save as draft.",
         "Send yourself tests: open the campaign, choose First email (or All emails), type your own address, press Send test. Show the result to the team.",
@@ -464,7 +464,7 @@ Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
 git commit -m "Describe the change"
 git push` },
       { heading: "Good to know", steps: [
-        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals), `009` (vehicle counts), `010` (End and Discard release contacts), `011` (Customers list and the richer import), `012` (sync alerts), `013` (Hold all sending and automatic reminders). Each is safe to run again. Never run `schema.sql`: it is the master copy only.",
+        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals), `009` (vehicle counts), `010` (End and Discard release contacts), `011` (Customers list and the richer import), `012` (sync alerts), `013` (Hold all sending and automatic reminders), `014` (skip contacts already emailed). Each is safe to run again. Never run `schema.sql`: it is the master copy only.",
         "The sync scripts live on the server in `C:\\trucktaxpro-sync`, not in Vercel. Updating them means copying files there.",
       ] },
     ],

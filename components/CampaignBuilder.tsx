@@ -13,7 +13,11 @@ const toLocalInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() *
 const monthYear = () => new Date().toLocaleDateString("en-US", { month: "short", year: "numeric" });
 const sample = { company: "Sample Trucking LLC", state: "TX", power_units: 3, fleet_type: "Sample fleet", phone: null, email: "you@example.com" };
 
-export function CampaignBuilder({ byType, total }: { byType: Record<string, number>; total: number }) {
+type Counts = { byType: Record<string, number>; total: number };
+export function CampaignBuilder({ fresh, everyone }: { fresh: Counts; everyone: Counts }) {
+  const [skipEmailed, setSkipEmailed] = useState(true);       // on by default: never send a "first" email twice
+  const { byType, total } = skipEmailed ? fresh : everyone;
+  const alreadyEmailed = everyone.total - fresh.total;
   const router = useRouter();
   const first = TEMPLATES[0];
   const [name, setName] = useState(`${first.name} — ${monthYear()}`); const [nameEdited, setNameEdited] = useState(false);
@@ -83,7 +87,7 @@ export function CampaignBuilder({ byType, total }: { byType: Record<string, numb
     setBusy(true); setErr("");
     const res = await fetch("/api/campaigns", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ name, filter_carrier_types: types, max_contacts: limit === "" ? null : +limit, daily_cap: cap,
-        steps: steps.map((s) => ({ subject: s.subject, body_md: s.body_md, delay_days: s.delay_days })), mode, scheduled_at: schedDate ? schedDate.toISOString() : null }) });
+        steps: steps.map((s) => ({ subject: s.subject, body_md: s.body_md, delay_days: s.delay_days })), mode, skip_emailed: skipEmailed, scheduled_at: schedDate ? schedDate.toISOString() : null }) });
     const j = await res.json();
     if (!res.ok) { setErr(j.error ?? "Could not create the campaign"); setBusy(false); return; }
     router.push(`/campaigns/${j.id}`);
@@ -107,6 +111,8 @@ export function CampaignBuilder({ byType, total }: { byType: Record<string, numb
           <div className="flex flex-wrap gap-2 mb-4">{Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, c]) => (
             <button key={t} type="button" onClick={() => toggle(t)} className={`pill h-8 px-3 border ${types.includes(t) ? "bg-signSoft text-sign border-sign" : "bg-white border-line text-ink"}`}>{t} <span className="ml-1.5 text-muted font-normal">{c.toLocaleString()}</span></button>))}</div>
           <div className="max-w-xs"><label className="label" htmlFor="lim">Only the first</label><input id="lim" type="number" min={1} className="input" placeholder="all" value={limit} onChange={(e) => setLimit(e.target.value)} /></div>
+          <label className="flex items-start gap-2 text-sm mt-4"><input className="mt-1" type="checkbox" checked={skipEmailed} onChange={(e) => setSkipEmailed(e.target.checked)} />
+            <span><strong>Skip contacts who already received a campaign email</strong> (recommended).{alreadyEmailed > 0 ? ` ${alreadyEmailed.toLocaleString()} contacts were emailed before and are left out.` : " Nobody has been emailed yet."} Test emails do not count.</span></label>
           <p className="text-xs text-muted mt-2">Contacts who are not customers yet and are not already in another campaign. &ldquo;Only the first&rdquo; lets you roll out in batches while the sending domain warms up.</p>
         </section>
 
@@ -119,7 +125,7 @@ export function CampaignBuilder({ byType, total }: { byType: Record<string, numb
               <option value="">Choose a template…</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
           </div>
-          <p className="text-sm text-muted mb-4">Edit anything, or type a title and press <strong>Write with AI</strong>. A blank line starts a new paragraph. A line with only a link becomes an orange button. **bold** works. The logo and footer are added to every email automatically. Check dates and claims before you send.</p>
+          <p className="text-sm text-muted mb-4">Edit anything, or type a title and press <strong>Write with AI</strong>. A blank line starts a new paragraph. A line with only a link becomes an orange button. **bold** works. The footer (phone, address and Unsubscribe link) is added to every email automatically. Check dates and claims before you send.</p>
           <div className="mb-5 p-3 bg-slate rounded-md">
             <div className="flex flex-wrap items-center gap-3">
               <label className="text-sm font-medium" htmlFor="testto">Test addresses</label>
