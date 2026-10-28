@@ -14,18 +14,20 @@ const monthYear = () => new Date().toLocaleDateString("en-US", { month: "short",
 const sample = { company: "Sample Trucking LLC", state: "TX", power_units: 3, fleet_type: "Sample fleet", phone: null, email: "you@example.com" };
 
 type Counts = { byType: Record<string, number>; total: number };
-export function CampaignBuilder({ fresh, everyone }: { fresh: Counts; everyone: Counts }) {
+/** A campaign being copied: its emails and settings fill the builder, ready for the next batch. */
+export type CopyFrom = { name: string; from: string; steps: Step[]; cap: number; types: string[]; limit: number | null };
+export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; everyone: Counts; copy?: CopyFrom }) {
   const [skipEmailed, setSkipEmailed] = useState(true);       // on by default: never send a "first" email twice
   const { byType, total } = skipEmailed ? fresh : everyone;
   const alreadyEmailed = everyone.total - fresh.total;
   const router = useRouter();
   const first = TEMPLATES[0];
-  const [name, setName] = useState(`${first.name} — ${monthYear()}`); const [nameEdited, setNameEdited] = useState(false);
-  const [types, setTypes] = useState<string[]>([]);
-  const [limit, setLimit] = useState("");                    // blank = everyone who matches
-  const [cap, setCap] = useState(50);
-  const [steps, setSteps] = useState<Step[]>(first.steps);
-  const [mode, setMode] = useState<Mode>("now");
+  const [name, setName] = useState(copy?.name ?? `${first.name} — ${monthYear()}`); const [nameEdited, setNameEdited] = useState(!!copy);
+  const [types, setTypes] = useState<string[]>(copy?.types ?? []);
+  const [limit, setLimit] = useState(copy?.limit ? String(copy.limit) : "");   // blank = everyone who matches
+  const [cap, setCap] = useState(copy?.cap ?? 50);
+  const [steps, setSteps] = useState<Step[]>(copy?.steps ?? first.steps);
+  const [mode, setMode] = useState<Mode>(copy ? "draft" : "now");
   const [sched, setSched] = useState("");
   const [now, setNow] = useState<Date | null>(null); const [origin, setOrigin] = useState("");
   const [testTo, setTestTo] = useState(""); const [testBusy, setTestBusy] = useState<number | null>(null);

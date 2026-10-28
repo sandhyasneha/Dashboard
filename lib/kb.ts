@@ -74,6 +74,13 @@ export const KB: KbArticle[] = [
         "3. When to send. Choose Send now, Schedule for later or Save as draft. Set Emails per day.",
         "Press the button at the bottom right. For Send now and Schedule you are asked to confirm the numbers.",
       ] },
+      { heading: "The next batch: Copy into a new campaign", steps: [
+        "Open the campaign you want to repeat and press Copy into a new campaign (top right).",
+        "The builder opens with the same emails, follow-up days, lists and daily limit, Only the first set to the same number, and the name ending in batch 2 (then batch 3, and so on).",
+        "Keep Skip contacts who already received a campaign email ticked: the people in earlier batches are left out, so the copy reaches the next contacts on the list.",
+        "Check the name, send yourself a test if you changed anything, then Save draft (or start it).",
+        "Every campaign stays in the Campaigns list under its name, with its results, so you can refer back to it.",
+      ] },
       { heading: "Writing the emails", text: "Contacts only have an email address and sometimes a phone number, so emails open with Hi there and do not use names or other details. A blank line starts a new paragraph, and **bold** works. Links: `[File now](https://trucktaxpro.com)` alone on its own line becomes an orange button; the same inside a sentence becomes underlined words; a web address typed as plain text (https://trucktaxpro.com or www.trucktaxpro.com) becomes a clickable link. See Templates, the AI writer and email design." },
       { heading: "Who leaves a campaign", steps: [
         "Anyone who unsubscribes, bounces or complains, immediately.",

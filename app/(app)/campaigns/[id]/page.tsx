@@ -34,7 +34,9 @@ export default async function CampaignPage({ params }: { params: { id: string } 
   return (
     <>
       <PageHeader title={c.name} sub={`Created ${when(c.created_at)} · up to ${n(c.daily_cap)} emails a day${c.status === "scheduled" && c.scheduled_at ? ` · starts ${centralLabel(new Date(c.scheduled_at))}` : ""}`}
-        action={<div className="flex items-center gap-3"><StatusPill status={c.status} /><CampaignControls id={c.id} status={c.status} /></div>} />
+        action={<div className="flex items-center gap-3"><StatusPill status={c.status} />
+          {c.kind === "prospect" && <Link href={`/campaigns/new?from=${c.id}`} className="btn-secondary" title="Same emails and settings, as a new draft for the next batch">Copy into a new campaign</Link>}
+          <CampaignControls id={c.id} status={c.status} /></div>} />
 
       <HoldBanner />
       {c.kind === "reminder" && <div className="panel p-4 mb-6 text-sm">Automatic reminder. New people are added every day while reminders are switched on. To change the emails, use <Link href="/dashboard/customer-list#reminders" className="text-sign font-medium hover:underline">Customers, Automatic reminders</Link>.</div>}
