@@ -27,7 +27,7 @@ export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; ever
   const [limit, setLimit] = useState(copy?.limit ? String(copy.limit) : "");   // blank = everyone who matches
   const [cap, setCap] = useState(copy?.cap ?? 50);
   const [steps, setSteps] = useState<Step[]>(copy?.steps ?? first.steps);
-  const [mode, setMode] = useState<Mode>(copy ? "draft" : "now");
+  const [mode, setMode] = useState<Mode>("draft");             // saving is the default: nothing sends until someone starts it
   const [sched, setSched] = useState("");
   const [now, setNow] = useState<Date | null>(null); const [origin, setOrigin] = useState("");
   const [testTo, setTestTo] = useState(""); const [testBusy, setTestBusy] = useState<number | null>(null);
@@ -96,7 +96,7 @@ export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; ever
   }
 
   const blocked = busy || !name || steps.some((s) => !s.subject || !s.body_md) || (mode === "schedule" && (!schedDate || isNaN(schedDate.getTime()))) || estimate === 0;
-  const button = mode === "now" ? "Start sending" : mode === "schedule" ? "Schedule campaign" : "Save draft";
+  const button = mode === "now" ? "Start sending" : mode === "schedule" ? "Schedule campaign" : "Save campaign";
   const previewHtml = (i: number) => renderEmail(fill(steps[i].body_md, sample), "#", previewOpts(origin));
 
   return (
@@ -163,7 +163,7 @@ export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; ever
       <aside className="panel p-5 sticky top-6">
         <h2 className="font-semibold mb-4">3. When to send</h2>
         <div className="space-y-2.5 mb-4">
-          {([["now", "Send now"], ["schedule", "Schedule for later"], ["draft", "Save as draft"]] as [Mode, string][]).map(([m, label]) => (
+          {([["draft", "Save the campaign (send later)"], ["now", "Send now"], ["schedule", "Schedule for later"]] as [Mode, string][]).map(([m, label]) => (
             <label key={m} className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" name="mode" checked={mode === m} onChange={() => setMode(m)} /> {label}</label>))}
         </div>
         {mode === "schedule" && (
@@ -172,6 +172,7 @@ export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; ever
             <input id="sched" type="datetime-local" className="input" min={now ? toLocalInput(now) : undefined} value={sched} onChange={(e) => setSched(e.target.value)} />
             <p className="text-xs text-muted mt-1">Uses your computer&rsquo;s time zone.{schedDate && !isNaN(schedDate.getTime()) && <> That is <strong>{centralLabel(schedDate)}</strong>.</>}</p>
           </div>)}
+        {mode === "draft" && <p className="text-sm bg-slate text-ink rounded-md p-3 mb-4">Saved under its name in Campaigns as a draft. <strong>Nothing is sent.</strong> Open it later to send yourself a test, then press Start now or Schedule.</p>}
         {firstOut && <p className="text-sm bg-signSoft text-ink rounded-md p-3 mb-4">First emails go out <strong>{centralLabel(firstOut)}</strong>. Sending runs weekdays, 9 AM to 5 PM Central.</p>}
 
         <label className="label" htmlFor="cap">Emails per day</label>

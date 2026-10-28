@@ -71,7 +71,7 @@ export const KB: KbArticle[] = [
         "1. Who gets it. Click lists to narrow it, or leave them unselected for everyone. Use Only the first to roll out in batches. Keep Skip contacts who already received a campaign email ticked, so nobody gets a first email twice.",
         "2. What you send. Start from a template (2290 filing due date, Prefile 2290 starts now, We accept 2290 for TY2027-28, or Blank). Edit any word, or type a title and press Write with AI. Use Preview this email to see the finished email.",
         "Send yourself a test of each email, or all of them at once.",
-        "3. When to send. Choose Send now, Schedule for later or Save as draft. Set Emails per day.",
+        "3. When to send. Save the campaign (send later) is chosen by default: the button says Save campaign, and it is kept as a draft under its name in Campaigns, sending nothing. Or choose Send now or Schedule for later. Set Emails per day.",
         "Press the button at the bottom right. For Send now and Schedule you are asked to confirm the numbers.",
       ] },
       { heading: "The next batch: Copy into a new campaign", steps: [
