@@ -122,7 +122,7 @@ export function CampaignBuilder({ fresh, everyone, copy, saved = [] }: { fresh: 
 
         <section className="panel p-6">
           <h2 className="font-semibold mb-4">1. Who gets it</h2>
-          <div className="label">Lists <span className="text-muted font-normal">(none selected = everyone)</span></div>
+          <div className="label">Lists <span className="text-muted font-normal">(none selected = everyone; pick an imported file&rsquo;s list to email only the people in that file)</span></div>
           <div className="flex flex-wrap gap-2 mb-4">{Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, c]) => (
             <button key={t} type="button" onClick={() => toggle(t)} className={`pill h-8 px-3 border ${types.includes(t) ? "bg-signSoft text-sign border-sign" : "bg-white border-line text-ink"}`}>{t} <span className="ml-1.5 text-muted font-normal">{c.toLocaleString()}</span></button>))}</div>
           <div className="max-w-xs"><label className="label" htmlFor="lim">Only the first</label><input id="lim" type="number" min={1} className="input" placeholder="all" value={limit} onChange={(e) => setLimit(e.target.value)} /></div>

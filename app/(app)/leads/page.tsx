@@ -11,10 +11,11 @@ export default async function Leads({ searchParams }: { searchParams: { q?: stri
   const p = Math.max(1, Number(searchParams.p ?? 1));
   let q = sb.from("leads").select("*", { count: "exact" }).order("created_at", { ascending: false }).range((p - 1) * PAGE, p * PAGE - 1);
   if (searchParams.q) q = q.ilike("email", `%${searchParams.q}%`);
-  if (searchParams.list) q = q.eq("carrier_type", searchParams.list);
+  if (searchParams.list) q = q.contains("lists", [searchParams.list]);     // a contact can be in several lists
   if (searchParams.status) q = q.eq("status", searchParams.status);
-  const [{ data, count }, { data: facets }] = await Promise.all([q, sb.rpc("lead_facets")]);
-  const lists = ((facets ?? []) as { kind: string; label: string }[]).filter((f) => f.kind === "type").map((f) => f.label);
+  const [{ data, count }, { data: sizes }] = await Promise.all([q, sb.rpc("list_sizes")]);
+  const sized = (sizes ?? []) as { label: string; n: number }[];
+  const lists = sized.map((f) => f.label);
   if (searchParams.list && !lists.includes(searchParams.list)) lists.push(searchParams.list);
   const total = count ?? 0;
   const link = (over: Record<string, string | number>) => { const u = new URLSearchParams({ ...searchParams, ...over } as any); return `/leads?${u}`; };
@@ -25,7 +26,7 @@ export default async function Leads({ searchParams }: { searchParams: { q?: stri
       <form className="flex gap-3 mb-5" action="/leads">
         <input className="input max-w-xs" name="q" placeholder="Search by email" defaultValue={searchParams.q} />
         <select className="input w-48" name="list" defaultValue={searchParams.list ?? ""}>
-          <option value="">All lists</option>{lists.map((l) => <option key={l} value={l}>{l}</option>)}
+          <option value="">All lists</option>{lists.map((l) => <option key={l} value={l}>{l}{sized.find((x) => x.label === l) ? ` (${n(sized.find((x) => x.label === l)!.n)})` : ""}</option>)}
         </select>
         <select className="input w-44" name="status" defaultValue={searchParams.status ?? ""}>
           <option value="">Any status</option>{["new", "in_sequence", "customer", "bounced", "unsubscribed", "complained"].map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
@@ -35,11 +36,11 @@ export default async function Leads({ searchParams }: { searchParams: { q?: stri
       {data?.length ? (
         <div className="panel overflow-hidden">
           <table className="table">
-            <thead><tr><th>Email</th><th>Phone</th><th>List</th><th>Status</th></tr></thead>
+            <thead><tr><th>Email</th><th>Phone</th><th>Lists</th><th>Status</th></tr></thead>
             <tbody>{data.map((l) => (
               <tr key={l.id}>
                 <td className="font-medium">{l.email}</td><td className="text-muted whitespace-nowrap">{l.phone ?? "—"}</td>
-                <td className="text-muted">{l.carrier_type ?? "—"}</td><td><StatusPill status={l.status} /></td>
+                <td className="text-muted">{(l.lists?.length ? l.lists : l.carrier_type ? [l.carrier_type] : []).join(", ") || "—"}</td><td><StatusPill status={l.status} /></td>
               </tr>))}</tbody>
           </table>
           <div className="flex items-center justify-between px-4 py-3 border-t border-line text-sm text-muted">

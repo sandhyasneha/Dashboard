@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
 import * as XLSX from "xlsx";
+import { EMAIL_COLUMNS, PHONE_COLUMNS, findColumn } from "@/lib/importColumns";
 
 type Totals = { received: number; valid: number; suppressed: number; inserted: number; updated: number };
 const zero: Totals = { received: 0, valid: 0, suppressed: 0, inserted: 0, updated: 0 };
@@ -38,6 +39,7 @@ export function Importer() {
   }
 
   const headers = rows?.[0] ? Object.keys(rows[0]) : [];
+  const emailCol = findColumn(headers, EMAIL_COLUMNS), phoneCol = findColumn(headers, PHONE_COLUMNS);
   return (
     <div className="grid grid-cols-[1fr_320px] gap-6 items-start">
       <div className="panel p-6">
@@ -53,6 +55,8 @@ export function Importer() {
           <div className="mt-6">
             <div className="flex items-baseline justify-between"><div className="font-semibold">{file?.name}</div><div className="text-sm text-muted">{rows.length.toLocaleString()} rows</div></div>
             <div className="text-sm text-muted mt-1">Columns found: {headers.join(", ")}</div>
+            {emailCol ? <div className="text-sm text-sign mt-1">Email column: <strong>{emailCol}</strong>{phoneCol ? <> · Phone column: <strong>{phoneCol}</strong></> : " · no phone column"}</div>
+              : <div className="text-sm text-brick mt-1">No email column found. Rename the email column to Email, then choose the file again.</div>}
             <div className="mt-4 overflow-x-auto panel">
               <table className="table"><thead><tr>{headers.slice(0, 6).map((h) => <th key={h}>{h}</th>)}</tr></thead>
                 <tbody>{rows.slice(0, 5).map((r, i) => <tr key={i}>{headers.slice(0, 6).map((h) => <td key={h} className="text-muted whitespace-nowrap">{String(r[h])}</td>)}</tr>)}</tbody></table>
@@ -60,10 +64,10 @@ export function Importer() {
             <div className="mt-5 max-w-sm">
               <label className="label" htmlFor="listname">List name</label>
               <input id="listname" className="input" value={listName} onChange={(e) => setListName(e.target.value)} placeholder="for example Past customers" />
-              <p className="text-xs text-muted mt-1">You pick this name in a campaign to choose who gets it. Only the email and phone columns are kept.</p>
+              <p className="text-xs text-muted mt-1">Required. Everyone in this file is put in this list, including addresses you already had, so in New campaign you can pick this list to email exactly these people. Use a new name for each file, for example FMCSA leads Nov 2026. Only the email and phone columns are kept.</p>
             </div>
             <div className="flex items-center gap-4 mt-5">
-              <button className="btn-primary" onClick={run} disabled={busy}>{busy ? "Importing…" : totals ? "Import again" : "Import these leads"}</button>
+              <button className="btn-primary" onClick={run} disabled={busy || !listName.trim() || !emailCol}>{busy ? "Importing…" : totals ? "Import again" : "Import these leads"}</button>
               {busy && <span className="text-sm text-muted">{progress.toLocaleString()} of {rows.length.toLocaleString()}</span>}
             </div>
             {busy && <div className="h-1.5 rounded-full bg-slate mt-3 overflow-hidden"><div className="h-full bg-sign" style={{ width: `${(progress / rows.length) * 100}%` }} /></div>}
@@ -79,13 +83,14 @@ export function Importer() {
             <div className="flex justify-between"><dt className="text-muted">Rows read</dt><dd>{totals.received.toLocaleString()}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Valid emails</dt><dd>{totals.valid.toLocaleString()}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">New leads</dt><dd className="text-sign font-semibold">{totals.inserted.toLocaleString()}</dd></div>
-            <div className="flex justify-between"><dt className="text-muted">Already on file, refreshed</dt><dd>{totals.updated.toLocaleString()}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted">Already on file (added to this list too)</dt><dd>{totals.updated.toLocaleString()}</dd></div>
             <div className="flex justify-between"><dt className="text-muted">Skipped (suppressed)</dt><dd className="text-brick">{totals.suppressed.toLocaleString()}</dd></div>
           </dl>
         ) : (
           <ul className="text-sm text-muted space-y-2 list-disc pl-4">
             <li>Emails are lower-cased and validated.</li>
-            <li>A carrier already on file is refreshed, not duplicated.</li>
+            <li>Everyone in the file is put in the list you name, so you can email exactly this file from New campaign.</li>
+            <li>An address already on file is not duplicated. It keeps its other lists and history, and is added to this list too. A missing phone number is filled in.</li>
             <li>Unsubscribed, bounced, or complained addresses are never re-added.</li>
             <li>Only email and phone are kept, with the list name you choose.</li>
             <li>Leads land as <strong>new</strong>; a campaign picks them up from there.</li>
