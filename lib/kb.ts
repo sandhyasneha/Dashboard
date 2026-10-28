@@ -55,7 +55,7 @@ export const KB: KbArticle[] = [
       ] },
       { heading: "Email only the people in one file", steps: [
         "Import the file with its own List name, for example FMCSA leads Nov 2026.",
-        "New campaign, section 1: click that list so it turns green. Leave the other lists unselected.",
+        "New campaign, section 1: choose that list in Send to. Each choice shows how many people in it are available.",
         "The count next to it is how many of that file can be emailed now. It can be lower than the file: customers, people already in another live campaign or draft, people who unsubscribed or bounced, and (with Skip ticked) people already emailed are left out.",
         "Untick Skip contacts who already received a campaign email only if you deliberately want to email people from the file who were emailed before.",
       ] },
@@ -77,7 +77,7 @@ export const KB: KbArticle[] = [
     sections: [
       { heading: "Steps", steps: [
         "Campaigns, then New campaign. Give it a name.",
-        "1. Who gets it. Click lists to narrow it, or leave them unselected for everyone. Use Only the first to roll out in batches. Keep Skip contacts who already received a campaign email ticked, so nobody gets a first email twice.",
+        "1. Who gets it. In Send to, choose a list (each shows how many are available), or Everyone. Use Only the first to roll out in batches. Keep Skip contacts who already received a campaign email ticked, so nobody gets a first email twice.",
         "2. What you send. Start from a template (2290 filing due date, Prefile 2290 starts now, We accept 2290 for TY2027-28, or Blank). Edit any word, or type a title and press Write with AI. Use Preview this email to see the finished email.",
         "Send yourself a test of each email, or all of them at once.",
         "3. When to send. Save the campaign (send later) is chosen by default: the button says Save campaign, and it is kept as a draft under its name in Campaigns, sending nothing. Or choose Send now or Schedule for later. Set Emails per day.",

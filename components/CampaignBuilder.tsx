@@ -48,7 +48,6 @@ export function CampaignBuilder({ fresh, everyone, copy, saved = [] }: { fresh: 
   const firstOut = startAt && !isNaN(startAt.getTime()) ? nextOpening(startAt) : null;
   const weeks = cap ? Math.ceil((estimate * steps.length) / cap / 5) : 0;
 
-  const toggle = (v: string) => setTypes(types.includes(v) ? types.filter((x) => x !== v) : [...types, v]);
   const update = (i: number, patch: Partial<Step>) => setSteps(steps.map((s, k) => (k === i ? { ...s, ...patch } : s)));
 
   const [tplMsg, setTplMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -122,9 +121,14 @@ export function CampaignBuilder({ fresh, everyone, copy, saved = [] }: { fresh: 
 
         <section className="panel p-6">
           <h2 className="font-semibold mb-4">1. Who gets it</h2>
-          <div className="label">Lists <span className="text-muted font-normal">(none selected = everyone; pick an imported file&rsquo;s list to email only the people in that file)</span></div>
-          <div className="flex flex-wrap gap-2 mb-4">{Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, c]) => (
-            <button key={t} type="button" onClick={() => toggle(t)} className={`pill h-8 px-3 border ${types.includes(t) ? "bg-signSoft text-sign border-sign" : "bg-white border-line text-ink"}`}>{t} <span className="ml-1.5 text-muted font-normal">{c.toLocaleString()}</span></button>))}</div>
+          <label className="label" htmlFor="list">Send to</label>
+          {/* One list, or everyone. The number is how many in that list can be emailed now (not customers, not in another campaign, and not already emailed while Skip is ticked). */}
+          <select id="list" className="input mb-1 max-w-xl" value={types[0] ?? ""} onChange={(e) => setTypes(e.target.value ? [e.target.value] : [])}>
+            <option value="">Everyone ({total.toLocaleString()} available)</option>
+            {Object.entries(byType).sort((a, b) => a[0].localeCompare(b[0])).map(([t, c]) => <option key={t} value={t}>{t} ({c.toLocaleString()} available)</option>)}
+            {types[0] && byType[types[0]] === undefined && <option value={types[0]}>{types[0]} (0 available)</option>}
+          </select>
+          <p className="text-xs text-muted mb-4">Pick an imported file&rsquo;s list to email only the people in that file. &ldquo;Available&rdquo; leaves out customers, anyone already in another campaign or draft, unsubscribed or bounced addresses, and (while the box below is ticked) anyone already emailed.</p>
           <div className="max-w-xs"><label className="label" htmlFor="lim">Only the first</label><input id="lim" type="number" min={1} className="input" placeholder="all" value={limit} onChange={(e) => setLimit(e.target.value)} /></div>
           <label className="flex items-start gap-2 text-sm mt-4"><input className="mt-1" type="checkbox" checked={skipEmailed} onChange={(e) => setSkipEmailed(e.target.checked)} />
             <span><strong>Skip contacts who already received a campaign email</strong> (recommended).{alreadyEmailed > 0 ? ` ${alreadyEmailed.toLocaleString()} contacts were emailed before and are left out.` : " Nobody has been emailed yet."} Test emails do not count.</span></label>
