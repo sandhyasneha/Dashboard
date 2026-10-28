@@ -13,7 +13,7 @@ export const TEMPLATES: EmailTemplate[] = [
     steps: [
       { subject: "Your Form 2290 due date is coming up", delay_days: 0,
         body_md: `Hi there,\n\nIf you run a truck with a taxable gross weight of 55,000 pounds or more, your Form 2290 (the Heavy Highway Vehicle Use Tax return) is due by the last day of the month after you first put the vehicle on the road. For trucks already in service on July 1, that date is August 31.\n\nFiling late can mean IRS penalties and interest, and your state may not renew your registration without the stamped Schedule 1.\n\n[File Form 2290 now](${LINK})\n\nIf you have already filed, thank you, and you can ignore this email. Reply here if you have a question.` },
-      { subject: "Re: Your Form 2290 due date", delay_days: 4,
+      { subject: "Following up: your Form 2290 due date", delay_days: 4,
         body_md: `Hi there,\n\nA quick follow-up in case my last note got buried.\n\nIf you have not filed yet, you can start here. Have your VINs, the gross weight and the month each vehicle was first used ready.\n\n[File Form 2290](${LINK})\n\nReply to this email any time if you need help.` },
       { subject: "Last reminder about your Form 2290", delay_days: 7,
         body_md: `Hi there,\n\nThis is my last message on this. The longer a return is late, the more penalty and interest can build up.\n\n[File Form 2290 now](${LINK})\n\nEither way, safe travels out there.` },
