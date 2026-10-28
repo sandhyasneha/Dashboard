@@ -11,7 +11,7 @@ type BuiltIn = { id: string; name: string; description: string; steps: Step[] };
 type Draft = { id?: string; name: string; description: string; steps: Step[] };
 
 const sample = { company: "Sample Trucking LLC", state: "TX", power_units: 3, fleet_type: "Sample fleet", phone: null, email: "you@example.com" };
-const STARTER: Step[] = [{ subject: "", body_md: "Hi there,\n\n\n\nhttps://trucktaxpro.com\n\nAny questions, just reply to this email.", delay_days: 0 }];
+const STARTER: Step[] = [{ subject: "", body_md: "Hi there,\n\n\n\nhttps://trucktaxpro.com\n\nAny questions? Email us at info@trucktaxpro.com.", delay_days: 0 }];
 
 export function InboxTips() {
   return (

@@ -8,7 +8,7 @@ export type AutoStep = { subject: string; body_md: string; delay_days: number };
 /** The emails used when nothing has been saved. {{last_filed}}, {{tax_year}} and {{month}} are filled in for each run. */
 export const DEFAULT_STEPS: AutoStep[] = [
   { subject: "Time to renew your Form 2290 for {{tax_year}}", delay_days: 0,
-    body_md: "Hi there,\n\nYou filed your Form 2290 with TruckTaxPro in {{last_filed}}. The {{tax_year}} tax period is open, and your details are already saved, so filing again is quick.\n\n[File Form 2290 for {{tax_year}}](https://trucktaxpro.com)\n\nIf you have already filed, thank you, and you can ignore this email. Reply here if you have a question." },
+    body_md: "Hi there,\n\nYou filed your Form 2290 with TruckTaxPro in {{last_filed}}. The {{tax_year}} tax period is open, and your details are already saved, so filing again is quick.\n\n[File Form 2290 for {{tax_year}}](https://trucktaxpro.com)\n\nIf you have already filed, thank you, and you can ignore this email. Questions? Email us at info@trucktaxpro.com." },
   { subject: "Reminder: your Form 2290 for {{tax_year}}", delay_days: 7,
     body_md: "Hi there,\n\nA quick reminder that your Form 2290 for the {{tax_year}} tax period has not been filed with us yet.\n\n[File Form 2290](https://trucktaxpro.com)\n\nIf you filed somewhere else, you can ignore this email." },
 ];

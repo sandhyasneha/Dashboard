@@ -251,6 +251,7 @@ export const KB: KbArticle[] = [
           "Write it like a short personal note: \"Hi there,\", two or three short paragraphs, 60 to 150 words.",
           "A plain, honest subject: no price or $ sign, no ALL CAPS, no \"!!\", no hype words such as free or cheapest. Never Re: or Fwd: on a first email: it is misleading, and anti-spam law (CAN-SPAM) forbids it.",
           "One link, typed as a plain web address (https://trucktaxpro.com). An orange button looks more like an ad.",
+          "For questions, ask people to email info@trucktaxpro.com. Never write reply to this email: replies to campaign emails are not read.",
           "No images, attachments, emojis or HTML code.",
           "Put the offer in the body in plain words, and make every claim true, for example $6.99 per truck.",
         ], note: "Our tests: the plain note with the subject Quick question about your 2290 landed in Gmail Primary. The same offer with a price in the subject and a button landed in Promotions. Inbox tips under each email check these points while you type. They are advice and never block saving." },

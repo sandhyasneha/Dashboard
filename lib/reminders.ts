@@ -18,13 +18,13 @@ export const DEFAULT_REMINDERS: ReminderConfig = {
   steps: {
     registered: [
       { subject: "Your TruckTaxPro account is ready", delay_days: 0,
-        body_md: "Hi there,\n\nThanks for creating your TruckTaxPro account. Filing your Form 2290 takes just a few minutes: add your business and vehicles, pay, and your stamped Schedule 1 arrives by email.\n\n[File your Form 2290](https://trucktaxpro.com)\n\nQuestions? Just reply to this email and we will help." },
+        body_md: "Hi there,\n\nThanks for creating your TruckTaxPro account. Filing your Form 2290 takes just a few minutes: add your business and vehicles, pay, and your stamped Schedule 1 arrives by email.\n\n[File your Form 2290](https://trucktaxpro.com)\n\nQuestions? Email us at info@trucktaxpro.com and we will help." },
       { subject: "Need a hand with your Form 2290?", delay_days: 3,
-        body_md: "Hi there,\n\nYou signed up with TruckTaxPro but have not started your Form 2290 yet. If anything is unclear, reply to this email and we will walk you through it.\n\n[Start your Form 2290](https://trucktaxpro.com)\n\nIf you have already filed somewhere else, you can ignore this email." },
+        body_md: "Hi there,\n\nYou signed up with TruckTaxPro but have not started your Form 2290 yet. If anything is unclear, email us at info@trucktaxpro.com and we will walk you through it.\n\n[Start your Form 2290](https://trucktaxpro.com)\n\nIf you have already filed somewhere else, you can ignore this email." },
     ],
     unpaid: [
       { subject: "Your Form 2290 is saved: finish it to get your Schedule 1", delay_days: 0,
-        body_md: "Hi there,\n\nYou started your Form 2290 for the {{tax_year}} tax period, but it has not been submitted yet. Your details are saved, so it only takes a minute to finish.\n\n[Finish your Form 2290](https://trucktaxpro.com)\n\nOnce it is submitted, your stamped Schedule 1 arrives by email. Reply here if you have a question." },
+        body_md: "Hi there,\n\nYou started your Form 2290 for the {{tax_year}} tax period, but it has not been submitted yet. Your details are saved, so it only takes a minute to finish.\n\n[Finish your Form 2290](https://trucktaxpro.com)\n\nOnce it is submitted, your stamped Schedule 1 arrives by email. Questions? Email us at info@trucktaxpro.com." },
       { subject: "Reminder: your Form 2290 is not submitted yet", delay_days: 3,
         body_md: "Hi there,\n\nA quick reminder that your Form 2290 for {{tax_year}} is still waiting to be submitted. Filing late can lead to IRS penalties.\n\n[Finish your Form 2290](https://trucktaxpro.com)\n\nIf you have already filed somewhere else, you can ignore this email." },
     ],

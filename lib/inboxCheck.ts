@@ -26,6 +26,7 @@ export function inboxWarnings(subject: string, body: string): string[] {
   if (/!\[|<img|<table|<div|<style/i.test(b)) out.push("Images or HTML code in the body. Keep it to plain text; the email design is added for you.");
   if (/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(s + b)) out.push("Emojis look promotional. Leave them out.");
   if (b && b.split(/\s+/).length > 220) out.push("The body is long. 60 to 150 words works best.");
+  if (/reply (to this|here)|just reply|reply to (the|my) (email|note)/i.test(b)) out.push("It asks people to reply to this email, but replies are not read. Ask them to email info@trucktaxpro.com instead.");
   if (b && !/\bhi\b|\bhello\b|\bdear\b/i.test(b.slice(0, 40))) out.push("Start with a greeting such as \"Hi there,\" so it reads like a note.");
   return out;
 }
