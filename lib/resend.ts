@@ -15,7 +15,7 @@ function toPayload(emails: OutboundEmail[]) {
   const replyTo = process.env.EMAIL_REPLY_TO;
   return emails.map((e) => ({
     from, to: [e.to], subject: e.subject, html: e.html, text: e.text,
-    reply_to: replyTo,
+    replyTo,                       // the Resend SDK reads replyTo (camelCase); a reply_to key here was silently ignored
     headers: { "List-Unsubscribe": `<${e.unsubscribeUrl}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" },
     tags: e.tags,
   }));
@@ -31,7 +31,7 @@ export async function sendBatchStrict(emails: OutboundEmail[]): Promise<{ ids: (
   const payload = toPayload(emails);
   let lastError = "Resend did not accept the emails.";
   for (let attempt = 0; attempt < 3; attempt++) {
-    const { data, error } = await resend.batch.send(payload as any);
+    const { data, error } = await resend.batch.send(payload);
     if (!error && data) return { ids: (data as any).data.map((d: any) => d?.id ?? null), error: null };
     lastError = error?.message ?? lastError;
     if (!isRateLimit(error) || attempt === 2) break;

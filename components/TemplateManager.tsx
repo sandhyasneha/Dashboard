@@ -25,6 +25,9 @@ export function InboxTips() {
 export function TemplateManager({ saved, builtIn, missing }: { saved: SavedTemplate[]; builtIn: BuiltIn[]; missing?: boolean }) {
   const router = useRouter();
   const [draft, setDraft] = useState<Draft | null>(null);
+  // The list is kept here too, so a save or delete shows at once instead of waiting for the page to reload.
+  const [list, setList] = useState<SavedTemplate[]>(saved);
+  useEffect(() => setList(saved), [saved]);
   const [preview, setPreview] = useState<number | null>(null);
   const [busy, setBusy] = useState(false); const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [origin, setOrigin] = useState(""); useEffect(() => setOrigin(window.location.origin), []);
@@ -33,17 +36,19 @@ export function TemplateManager({ saved, builtIn, missing }: { saved: SavedTempl
   const upd = (i: number, patch: Partial<Step>) => draft && setDraft({ ...draft, steps: draft.steps.map((s, k) => (k === i ? { ...s, ...patch } : s)) });
 
   async function save() {
-    if (!draft) return; setBusy(true); setMsg(null);
+    if (!draft || busy) return; setBusy(true); setMsg(null);                 // busy check stops a double click from saving twice
     const res = await fetch("/api/templates", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(draft) });
     const j = await res.json().catch(() => ({})); setBusy(false);
     if (!res.ok) { setMsg({ ok: false, text: j.error ?? "Could not save." }); return; }
+    const row: SavedTemplate = { id: j.id, name: draft.name.trim(), description: draft.description.trim() || null, steps: draft.steps, updated_at: new Date().toISOString(), created_by: null };
+    setList((l) => [row, ...l.filter((x) => x.id !== j.id)]);
     setDraft(null); setMsg({ ok: true, text: `Saved "${draft.name}". It now appears in New campaign, under Start from a template.` }); router.refresh();
   }
   async function remove(t: SavedTemplate) {
     if (!confirm(`Delete the template "${t.name}"? Campaigns already made from it are not affected.`)) return;
     const res = await fetch("/api/templates", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: t.id }) });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) setMsg({ ok: false, text: j.error ?? "Could not delete." }); else { setMsg({ ok: true, text: `Deleted "${t.name}".` }); router.refresh(); }
+    if (!res.ok) setMsg({ ok: false, text: j.error ?? "Could not delete." }); else { setList((l) => l.filter((x) => x.id !== t.id)); setMsg({ ok: true, text: `Deleted "${t.name}".` }); router.refresh(); }
   }
   const blocked = busy || !draft?.name.trim() || !!draft?.steps.some((s) => !s.subject.trim() || !s.body_md.trim());
 
@@ -91,9 +96,9 @@ export function TemplateManager({ saved, builtIn, missing }: { saved: SavedTempl
 
       <section className="panel overflow-hidden mb-6">
         <div className="px-5 py-4 border-b border-line"><h2 className="font-semibold">Your templates</h2></div>
-        {saved.length ? (
+        {list.length ? (
           <table className="table"><thead><tr><th>Name</th><th>Emails</th><th>First subject</th><th>Updated</th><th></th></tr></thead>
-            <tbody>{saved.map((t) => (
+            <tbody>{list.map((t) => (
               <tr key={t.id}>
                 <td><div className="font-medium">{t.name}</div>{t.description && <div className="text-xs text-muted">{t.description}</div>}</td>
                 <td>{t.steps.length}</td>
