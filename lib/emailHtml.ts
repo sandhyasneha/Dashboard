@@ -2,7 +2,7 @@
 
 /** branded = logo header, orange line and dark footer with icons. plain = the word TruckTaxPro in navy, a plain footer, no images.
  *  plain-link = plain, and a link on its own line stays a bold link instead of an orange button. */
-export type EmailStyle = "branded" | "plain" | "plain-link";
+export type EmailStyle = "branded" | "plain" | "plain-link" | "minimal";
 
 export type EmailOpts = {
   style?: EmailStyle;
@@ -54,13 +54,24 @@ export function renderEmail(bodyMd: string, unsubscribeUrl: string, o: EmailOpts
   const body = bodyMd.trim().split(/\n\s*\n/).map((p) => {
     const t = p.trim();
     const only = t.match(/^\[(.+?)\]\((https?:\/\/[^\s)]+)\)$/);
-    if (only && style === "plain-link") return `<p style="margin:0 0 18px 0;font-size:16px;line-height:1.65"><a href="${esc(only[2])}" style="color:${NAVY};text-decoration:underline;font-weight:700">${esc(only[1])}</a></p>`;
+    if (only && (style === "plain-link" || style === "minimal")) return `<p style="margin:0 0 18px 0;font-size:16px;line-height:1.65"><a href="${esc(only[2])}" style="color:${NAVY};text-decoration:underline;font-weight:700">${esc(only[1])}</a></p>`;
     if (only) return button(only[1], only[2]);
     const lines = t.split("\n").map((l) => l.trim()).filter(Boolean);
     if (lines.length && lines.every((l) => /^[-*] /.test(l)))
       return `<ul style="margin:0 0 18px 0;padding-left:22px;font-size:16px;line-height:1.65;color:${INK}">${lines.map((l) => `<li style="margin-bottom:6px">${inline(l.replace(/^[-*] /, ""))}</li>`).join("")}</ul>`;
     return `<p style="margin:0 0 18px 0;font-size:16px;line-height:1.65;color:${INK}">${inline(t).replace(/\n/g, "<br/>")}</p>`;
   }).join("");
+
+  if (style === "minimal") {
+    // Minimal: reads like a personal email. No header, normal-size text, and a three-line text footer.
+    // Still has everything the law requires: who it is from, the postal address and an unsubscribe link.
+    const small = "font-size:13px;line-height:1.6;color:#6b7280";
+    return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:16px;background:#ffffff;font-family:Arial,Helvetica,sans-serif;color:${INK}">
+<div style="max-width:600px">${body.replace(/font-size:16px/g, "font-size:15px")}
+<div style="${small};margin-top:28px">TruckTaxPro Support${o.phone ? ` | ${esc(o.phone)}` : ""}${o.postalAddress ? `<br/>${esc(o.postalAddress)}` : ""}<br/>Stop receiving these updates: <a href="${esc(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">unsubscribe</a></div>
+</div></body></html>`;
+  }
 
   if (style !== "branded") {
     // Plain look: no images, no coloured bands. Everything required by law (address, unsubscribe) stays, as small grey text.
@@ -100,6 +111,10 @@ ${o.postalAddress ? `<div style="margin-top:6px">${esc(o.postalAddress)}</div>` 
 }
 
 export function renderEmailText(bodyMd: string, unsubscribeUrl: string, o: EmailOpts) {
+  if (o.style === "minimal") {
+    const t = bodyMd.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, "$1: $2").trim();
+    return [t, "", "--", `TruckTaxPro Support${o.phone ? " | " + o.phone : ""}`, o.postalAddress, `Stop receiving these updates: ${unsubscribeUrl}`].filter((l, i) => l !== "" || i === 1).join("\n");
+  }
   const text = bodyMd.replace(/\*\*(.+?)\*\*/g, "$1").replace(/\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g, "$1: $2");
   return [text.trim(), "", "--", "TruckTaxPro", o.phone, o.postalAddress, o.reason, `Unsubscribe: ${unsubscribeUrl}`].filter((l, i) => l !== "" || i === 1).join("\n");
 }
