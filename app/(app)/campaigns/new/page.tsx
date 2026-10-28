@@ -32,13 +32,14 @@ export default async function NewCampaign({ searchParams }: { searchParams: { fr
     return { byType, total };
   };
   const fresh = read(skip.data), everyone = read(all.data);
+  const { data: mine } = await sb.from("email_templates").select("id, name, description, steps").order("name");
   const missing = !!skip.error;
   return (
     <>
       <PageHeader title="New campaign" sub="Only contacts marked new are enrolled, so nobody is in two sequences at once. Customers who have already registered are handled by Retention." />
       {copy && <div className="panel p-4 mb-6 bg-signSoft text-sm">Copied from <strong>{copy.from}</strong>: the same emails, follow-up days, lists and daily limit. Only the first is set to the same number as before. Contacts already emailed are skipped, so this reaches the next batch. Check the name, then Save draft.</div>}
       {missing && <div className="panel p-4 mb-6 bg-amberSoft text-sm">Run <code>supabase/patch-014.sql</code> in Supabase, then reload. It adds Skip contacts who were already emailed.</div>}
-      <CampaignBuilder key={copy ? searchParams.from : "new"} fresh={fresh} everyone={everyone} copy={copy} />
+      <CampaignBuilder key={copy ? searchParams.from : "new"} fresh={fresh} everyone={everyone} copy={copy} saved={(mine ?? []) as any} />
     </>
   );
 }

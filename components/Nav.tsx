@@ -13,6 +13,7 @@ const sections = [
   ]},
   { title: "Email campaign", items: [
     { href: "/campaigns", label: "Campaigns" },
+    { href: "/templates", label: "Templates" },
     { href: "/leads", label: "Leads" },
     { href: "/customers", label: "Converted" },
     { href: "/settings", label: "Settings" },

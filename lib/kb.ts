@@ -222,13 +222,50 @@ export const KB: KbArticle[] = [
     ],
   },
   {
+    slug: "your-templates", group: "Campaigns", title: "Your own templates: create, use and keep them inbox-friendly",
+    summary: "Save an email sequence once, reuse it for every batch and season.",
+    sections: [
+      { heading: "What a template is for", text: "A template is a saved email sequence: the first email and its follow-ups, with the days between them. Write and approve the wording once, then start every new campaign from it instead of pasting the emails again. It is only a starting point: picking it fills the builder, and you can still change anything for that one campaign. Editing or deleting a template never changes a campaign that was already made from it." },
+      { heading: "Create a template", steps: [
+        "Email campaign, then Templates, then Create template.",
+        "Give it a name (for example $6.99 per truck, plain) and, if you like, what it is for.",
+        "Write the first email: subject and body. Press Add a follow-up for each follow-up, and set the days after the previous email.",
+        "Watch the Inbox tips under each email and fix what they point out. Press Preview this email to see it.",
+        "Press Save template.",
+      ] },
+      { heading: "Other ways to make one", steps: [
+        "From a campaign you are building: in New campaign, section 2, press Save these emails as a template and type a name.",
+        "From a built-in template: Templates, then Copy next to it. You get your own editable version.",
+      ] },
+      { heading: "Use a template", steps: [
+        "Campaigns, then New campaign. In section 2, open Start from a template and pick it under Your templates.",
+        "The emails fill in. Check them, send yourself a test, then Save campaign.",
+        "For the next batch of the same campaign, Copy into a new campaign on the campaign page is quicker. See Create a campaign.",
+      ] },
+      { heading: "Change or delete a template", steps: [
+        "Templates, then Edit next to it. Change it and press Save template.",
+        "Templates, then Delete. Campaigns made from it keep their emails.",
+      ] },
+      { heading: "Keep it plain to land in the inbox", text: "Every email gets the same plain design and footer (phone, address, Unsubscribe) automatically, so write only plain text. What decides Primary, Promotions or spam is mostly how the email reads:",
+        steps: [
+          "Write it like a short personal note: \"Hi there,\", two or three short paragraphs, 60 to 150 words.",
+          "A plain, honest subject: no price or $ sign, no ALL CAPS, no \"!!\", no hype words such as free or cheapest. Never Re: or Fwd: on a first email: it is misleading, and anti-spam law (CAN-SPAM) forbids it.",
+          "One link, typed as a plain web address (https://trucktaxpro.com). An orange button looks more like an ad.",
+          "No images, attachments, emojis or HTML code.",
+          "Put the offer in the body in plain words, and make every claim true, for example $6.99 per truck.",
+        ], note: "Our tests: the plain note with the subject Quick question about your 2290 landed in Gmail Primary. The same offer with a price in the subject and a button landed in Promotions. Inbox tips under each email check these points while you type. They are advice and never block saving." },
+      { heading: "Good to know", text: "Needs `patch-015.sql` in Supabase. The built-in templates are fixed; copy one to change it." },
+    ],
+  },
+  {
     slug: "templates-and-ai", group: "Campaigns", title: "Templates, the AI writer and email design",
     summary: "Starter emails, writing with AI, and how every email looks.",
     sections: [
       { heading: "Templates", steps: [
-        "In New campaign, section 2, open Start from a template.",
-        "Choose 2290 filing due date, Prefile 2290 starts now, We accept 2290 for TY2027-28, or Blank.",
+        "New campaign starts empty. In section 2, open Start from a template to fill it in.",
+        "Your templates are listed first, then the built-in ones (2290 filing due date, Prefile 2290 starts now, We accept 2290 for TY2027-28, Blank).",
         "The emails fill in. Change any word, add or remove follow-ups, and change the days between them.",
+        "To make and manage your own templates, see Your own templates.",
       ], note: "Check the dates and claims before you send. For example, only use Prefile 2290 starts now once prefiling has really opened." },
       { heading: "Write with AI", steps: [
         "Type a Title in the email. It is also the subject line.",
@@ -471,7 +508,7 @@ Set-ScheduledTask -TaskName "TruckTaxPro Sync" -Action $a` },
 git commit -m "Describe the change"
 git push` },
       { heading: "Good to know", steps: [
-        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals), `009` (vehicle counts), `010` (End and Discard release contacts), `011` (Customers list and the richer import), `012` (sync alerts), `013` (Hold all sending and automatic reminders), `014` (skip contacts already emailed). Each is safe to run again. Never run `schema.sql`: it is the master copy only.",
+        "SQL files so far, in order: `patch-002` (audiences and counts), `003` (scheduling), `004` (daily limits), `005` (test email tracking), `006` (paid returns), `007` (payments and revenue), `008` (retention and monthly renewals), `009` (vehicle counts), `010` (End and Discard release contacts), `011` (Customers list and the richer import), `012` (sync alerts), `013` (Hold all sending and automatic reminders), `014` (skip contacts already emailed), `015` (your own templates). Each is safe to run again. Never run `schema.sql`: it is the master copy only.",
         "The sync scripts live on the server in `C:\\trucktaxpro-sync`, not in Vercel. Updating them means copying files there.",
       ] },
     ],

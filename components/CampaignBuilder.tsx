@@ -5,6 +5,7 @@ import { centralLabel, nextOpening } from "@/lib/schedule";
 import { TEMPLATES } from "@/lib/templates";
 import { fill, renderEmail } from "@/lib/emailHtml";
 import { previewOpts } from "@/lib/brand";
+import { inboxWarnings } from "@/lib/inboxCheck";
 
 type Step = { subject: string; body_md: string; delay_days: number; notes?: string };
 type Mode = "now" | "schedule" | "draft";
@@ -16,13 +17,14 @@ const sample = { company: "Sample Trucking LLC", state: "TX", power_units: 3, fl
 type Counts = { byType: Record<string, number>; total: number };
 /** A campaign being copied: its emails and settings fill the builder, ready for the next batch. */
 export type CopyFrom = { name: string; from: string; steps: Step[]; cap: number; types: string[]; limit: number | null };
-export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; everyone: Counts; copy?: CopyFrom }) {
+type Saved = { id: string; name: string; description: string | null; steps: Step[] };
+export function CampaignBuilder({ fresh, everyone, copy, saved = [] }: { fresh: Counts; everyone: Counts; copy?: CopyFrom; saved?: Saved[] }) {
   const [skipEmailed, setSkipEmailed] = useState(true);       // on by default: never send a "first" email twice
   const { byType, total } = skipEmailed ? fresh : everyone;
   const alreadyEmailed = everyone.total - fresh.total;
   const router = useRouter();
-  const first = TEMPLATES[0];
-  const [name, setName] = useState(copy?.name ?? `${first.name} — ${monthYear()}`); const [nameEdited, setNameEdited] = useState(!!copy);
+  const first = TEMPLATES.find((t) => t.id === "blank") ?? TEMPLATES[0];     // start empty, so nobody sends a starter template by mistake
+  const [name, setName] = useState(copy?.name ?? `New campaign — ${monthYear()}`); const [nameEdited, setNameEdited] = useState(!!copy);
   const [types, setTypes] = useState<string[]>(copy?.types ?? []);
   const [limit, setLimit] = useState(copy?.limit ? String(copy.limit) : "");   // blank = everyone who matches
   const [cap, setCap] = useState(copy?.cap ?? 50);
@@ -49,8 +51,19 @@ export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; ever
   const toggle = (v: string) => setTypes(types.includes(v) ? types.filter((x) => x !== v) : [...types, v]);
   const update = (i: number, patch: Partial<Step>) => setSteps(steps.map((s, k) => (k === i ? { ...s, ...patch } : s)));
 
+  const [tplMsg, setTplMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  async function saveAsTemplate() {
+    const tname = prompt("Name for this template (it appears under Start from a template):", nameEdited ? name : "");
+    if (!tname?.trim()) return;
+    setTplMsg(null);
+    const res = await fetch("/api/templates", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: tname.trim(), steps: steps.map((s) => ({ subject: s.subject, body_md: s.body_md, delay_days: s.delay_days })) }) });
+    const j = await res.json().catch(() => ({}));
+    setTplMsg(res.ok ? { ok: true, text: `Saved as the template "${tname.trim()}". Find it in Templates.` } : { ok: false, text: j.error ?? "Could not save the template." });
+  }
+
   function applyTemplate(id: string) {
-    const t = TEMPLATES.find((x) => x.id === id); if (!t) return;
+    const mine = saved.find((x) => "mine:" + x.id === id);
+    const t = mine ? { name: mine.name, steps: mine.steps } : TEMPLATES.find((x) => x.id === id); if (!t) return;
     if (steps.some((s) => s.body_md.trim()) && !confirm("Replace the emails below with this template?")) return;
     setSteps(t.steps.map((s) => ({ ...s }))); setPreview(null); setAiMsg(null);
     if (!nameEdited) setName(`${t.name} — ${monthYear()}`);
@@ -124,8 +137,12 @@ export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; ever
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <label className="text-sm font-medium" htmlFor="tpl">Start from a template</label>
             <select id="tpl" className="input w-72 h-9" value="" onChange={(e) => applyTemplate(e.target.value)}>
-              <option value="">Choose a template…</option>{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              <option value="">Choose a template…</option>
+              {saved.length > 0 && <optgroup label="Your templates">{saved.map((t) => <option key={t.id} value={"mine:" + t.id}>{t.name}</option>)}</optgroup>}
+              <optgroup label="Built-in">{TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</optgroup>
             </select>
+            <button type="button" className="text-sm text-sign font-medium hover:underline" disabled={steps.some((s) => !s.subject.trim() || !s.body_md.trim())} onClick={saveAsTemplate}>Save these emails as a template</button>
+            {tplMsg && <span className={`text-sm ${tplMsg.ok ? "text-sign" : "text-brick"}`}>{tplMsg.text}</span>}
           </div>
           <p className="text-sm text-muted mb-4">Edit anything, or type a title and press <strong>Write with AI</strong>. A blank line starts a new paragraph. A line with only a link written as [button text](https://…) becomes an orange button. A web address typed as plain text becomes a clickable link. **bold** works. The footer (phone, address and Unsubscribe link) is added to every email automatically. Check dates and claims before you send.</p>
           <div className="mb-5 p-3 bg-slate rounded-md">
@@ -154,6 +171,7 @@ export function CampaignBuilder({ fresh, everyone, copy }: { fresh: Counts; ever
                 <input className="input h-9 flex-1 min-w-[240px]" placeholder="Details for the AI (optional), for example a deadline or an offer" value={s.notes ?? ""} onChange={(e) => update(i, { notes: e.target.value })} />
               </div>
               <textarea className="textarea" rows={9} placeholder="Body" value={s.body_md} onChange={(e) => update(i, { body_md: e.target.value })} />
+              {(() => { const w = inboxWarnings(s.subject, s.body_md); return w.length > 0 && (s.subject || s.body_md) ? <ul className="text-xs text-amber mt-2 space-y-0.5">{w.map((x) => <li key={x}>Inbox tip: {x}</li>)}</ul> : null; })()}
               <button type="button" className="text-sm text-sign font-medium mt-2 hover:underline" disabled={!s.body_md.trim()} onClick={() => setPreview(preview === i ? null : i)}>{preview === i ? "Hide preview" : "Preview this email"}</button>
               {preview === i && <iframe title="Email preview" sandbox="" className="w-full h-[640px] border border-line rounded-md mt-3 bg-white" srcDoc={previewHtml(i)} />}
             </div>))}</div>
