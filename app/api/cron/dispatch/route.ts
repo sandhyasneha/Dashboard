@@ -9,6 +9,7 @@ import { recordRun, type Problem } from "@/lib/senderMonitor";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";   // never reuse an old database answer in a scheduled job
 
 /** Up to this many emails per campaign in one run. With a run every 5 minutes, a day's amount goes out in about the first hour. */
 const PER_RUN = 50;

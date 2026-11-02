@@ -4,6 +4,7 @@ import { runReminders } from "@/lib/reminders";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";   // never reuse an old database answer in a scheduled job
 
 /** Daily, after the morning sync: adds the people who qualify today to the reminder campaigns (only when switched on). */
 export async function GET(req: Request) {

@@ -5,6 +5,7 @@ import { alertIfSenderStale } from "@/lib/senderMonitor";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";   // never reuse an old database answer in a scheduled job
 
 /** Daily, a few hours after the 6:00 AM sync: emails the admins if the sync failed, is stuck, or has not run. */
 export async function GET(req: Request) {

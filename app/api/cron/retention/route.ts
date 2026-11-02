@@ -4,6 +4,7 @@ import { runMonthlyRetention } from "@/lib/retention";
 
 export const maxDuration = 120;
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";   // never reuse an old database answer in a scheduled job
 
 /** Daily check. It only does something once a month, on the day set in Retention, and only if monthly renewals are switched on. */
 export async function GET(req: Request) {
