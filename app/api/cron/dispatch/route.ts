@@ -5,28 +5,66 @@ import { sendBatchStrict, type OutboundEmail } from "@/lib/resend";
 import { PEAK_MONTHS, centralMonth } from "@/lib/schedule";
 import { fill, renderHtml, renderText, unsubscribeToken } from "@/lib/template";
 import { postalAddress } from "@/lib/brand";
+import { recordRun, type Problem } from "@/lib/senderMonitor";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-/** Every 15 min: send due steps for running campaigns, within caps and the send window. */
+/** Up to this many emails per campaign in one run. With a run every 5 minutes, a day's amount goes out in about the first hour. */
+const PER_RUN = 50;
+
+/**
+ * Every 5 minutes: send due steps for running campaigns, within caps and the send window.
+ * Every run records what it did, in plain words, and raises an alert email when a campaign should be sending but is not.
+ */
 export async function GET(req: Request) {
   const denied = requireCron(req); if (denied) return denied;
+  let out: { body: Record<string, unknown>; result: string; sent: number; problem?: Problem | null };
+  try { out = await run(); }
+  catch (e: any) {
+    const msg = String(e?.message ?? e);
+    out = { body: { error: msg }, result: `Sender error: ${msg}`, sent: 0, problem: { key: "sender-error", subject: "TruckTaxPro: the campaign sender hit an error", text: `The campaign sender stopped with this error:\n\n${msg}\n\nIt tries again every 5 minutes. If this email repeats, send the error to support.` } };
+  }
+  await recordRun(out.result, out.sent, out.problem).catch(() => {});
+  return NextResponse.json(out.body);
+}
+
+/** Campaigns that have emails due right now (running, or scheduled for a time that has passed). */
+async function dueNow(sb: ReturnType<typeof supabaseAdmin>) {
+  const nowIso = new Date().toISOString();
+  const { data: camps } = await sb.from("campaigns").select("id, name, status, scheduled_at").or(`status.eq.running,and(status.eq.scheduled,scheduled_at.lte.${nowIso})`);
+  const out: string[] = [];
+  for (const c of camps ?? []) {
+    const { count } = await sb.from("enrollments").select("id", { count: "exact", head: true }).eq("campaign_id", c.id).eq("status", "active").lte("next_send_at", nowIso);
+    if ((count ?? 0) > 0) out.push(c.name);
+  }
+  return out;
+}
+
+async function run(): Promise<{ body: Record<string, unknown>; result: string; sent: number; problem?: Problem | null }> {
   const sb = supabaseAdmin();
+  const skip = (reason: string, problem?: Problem | null) => ({ body: { skipped: reason }, result: reason, sent: 0, problem });
   const app = process.env.NEXT_PUBLIC_APP_URL!;
-  if (!postalAddress()) return NextResponse.json({ skipped: "COMPANY_POSTAL_ADDRESS is not set in Vercel. Every marketing email must carry your postal address, so sending is paused until it is added." });
+  if (!postalAddress()) return skip("Not sending: the postal address is missing (COMPANY_POSTAL_ADDRESS).", { key: "postal", subject: "TruckTaxPro: campaign emails are not sending", text: "No postal address is set, and every marketing email must carry one. Set COMPANY_POSTAL_ADDRESS in Vercel and redeploy." });
 
   // Hold all sending (Settings): nothing is sent and scheduled campaigns wait. A missing setting counts as ON, to fail safe.
   const { data: hold, error: holdErr } = await sb.from("settings").select("hold_all").eq("id", 1).maybeSingle();
-  if (holdErr || !hold || hold.hold_all !== false) return NextResponse.json({ skipped: holdErr ? "hold setting unreadable (run supabase/patch-013.sql); sending stays held" : "Hold all sending is on" });
+  // Central time covers TX/IL/IN; CA/GA/OH land within two hours either side.
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", weekday: "short", hour: "numeric", hour12: false }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+  const hour = Number(parts.hour) % 24;
+  const weekend = parts.weekday === "Sat" || parts.weekday === "Sun";
+  const sendingHours = !weekend && hour >= 9 && hour < 17;
+  if (holdErr || !hold || hold.hold_all !== false) {
+    const waiting = sendingHours ? await dueNow(sb) : [];
+    return skip(holdErr ? "Not sending: the hold setting could not be read (run supabase/patch-013.sql)." : "Not sending: Hold all sending is on.",
+      waiting.length ? { key: "hold", subject: "TruckTaxPro: campaigns are waiting because sending is on hold", text: `These campaigns have emails ready to go, but Hold all sending is on, so nothing is sent:\n\n- ${waiting.join("\n- ")}\n\nIf that is intended, ignore this email. Otherwise: Settings, then Release the hold.` } : null);
+  }
 
   // Campaigns scheduled for a time that has now arrived start sending (the window and caps below still apply).
   await sb.from("campaigns").update({ status: "running", scheduled_at: null }).eq("status", "scheduled").lte("scheduled_at", new Date().toISOString());
 
-  // Central time covers TX/IL/IN; CA/GA/OH land within two hours either side.
-  const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hour12: false, timeZone: "America/Chicago" }).format(new Date()));
-  const dow = new Date().getUTCDay();
-  if (dow === 0 || dow === 6) return NextResponse.json({ skipped: "weekend" });
+  if (weekend) return skip("Weekend: nothing is sent until Monday, 9 AM Central.");
+  if (!sendingHours) return skip("Outside sending hours (weekdays, 9 AM to 5 PM Central). Waiting for the next window.");
 
   const [{ data: settings }, { data: today }, { data: month }] = await Promise.all([
     sb.from("settings").select("*").eq("id", 1).single(),
@@ -39,11 +77,12 @@ export async function GET(req: Request) {
   const remainingToday = dailyCap - (today?.n ?? 0);
   const remainingMonth = (settings?.monthly_cap ?? 50000) - (month?.n ?? 0);
   let budget = Math.max(0, Math.min(remainingToday, remainingMonth));
-  if (budget === 0) return NextResponse.json({ skipped: "cap reached" });
+  if (budget === 0) return skip(remainingMonth <= 0 ? `Monthly limit of ${settings?.monthly_cap} reached (Settings). Sending resumes on the 1st.` : `Today's overall limit of ${dailyCap} reached (Settings). Sending continues tomorrow.`);
 
   const { data: campaigns } = await sb.from("campaigns").select("*").eq("status", "running");
   const report: Record<string, number> = {};
-  let runFailed = false;
+  const notes: string[] = [];
+  let runFailed = false, failure = "";
   const startOfDay = new Date(); startOfDay.setUTCHours(0, 0, 0, 0);
 
   for (const c of campaigns ?? []) {
@@ -51,10 +90,9 @@ export async function GET(req: Request) {
     const { count: sentToday } = await sb.from("messages").select("id", { count: "exact", head: true })
       .eq("campaign_id", c.id).gte("sent_at", startOfDay.toISOString());
     const campRemaining = c.daily_cap - (sentToday ?? 0);
-    // Spread the daily cap across the window (4 runs per hour) instead of one burst.
-    const perRun = Math.ceil(c.daily_cap / Math.max(1, (c.send_window_end - c.send_window_start) * 4));
-    const take = Math.max(0, Math.min(budget, campRemaining, perRun));
-    if (take === 0) continue;
+    // Send the day's amount early in the window: up to PER_RUN per 5-minute run, until the campaign's Emails per day is used.
+    const take = Math.max(0, Math.min(budget, campRemaining, PER_RUN));
+    if (take === 0) { if (campRemaining <= 0) notes.push(`${c.name}: today's ${c.daily_cap} sent`); continue; }
 
     const { data: steps } = await sb.from("campaign_steps").select("*").eq("campaign_id", c.id).order("position");
     if (!steps?.length) continue;
@@ -118,7 +156,7 @@ export async function GET(req: Request) {
       })));
       if (sendError) {
         await sb.from("email_events").insert({ type: "dispatch.batch_failed", payload: { campaign: c.id, not_sent: outbound.length - accepted.length, error: sendError } });
-        runFailed = true;
+        runFailed = true; failure = sendError;
       }
       for (const [k, o] of outbound.entries()) {
         if (!ids[k]) continue;
@@ -141,5 +179,11 @@ export async function GET(req: Request) {
     if ((stillActive ?? 0) === 0 && c.kind !== "reminder") await sb.from("campaigns").update({ status: "completed" }).eq("id", c.id);
     if (runFailed || budget <= 0) break;
   }
-  return NextResponse.json({ sent: report, ...(runFailed ? { warning: "Resend rejected a batch. Those emails will be retried on the next run." } : {}) });
+  const total = Object.values(report).reduce((a, b) => a + b, 0);
+  const sentText = Object.entries(report).filter(([, n]) => n > 0).map(([k, n]) => `${k}: ${n}`).join("; ");
+  if (runFailed) return { body: { sent: report, warning: "Resend rejected a batch. Those emails will be retried on the next run." }, sent: total,
+    result: `Resend refused some emails: ${failure}${sentText ? ` (sent: ${sentText})` : ""}`,
+    problem: { key: "resend:" + failure.slice(0, 60), subject: "TruckTaxPro: Resend refused campaign emails", text: `Resend did not accept some campaign emails. Its answer:\n\n${failure}\n\nThey are retried every 5 minutes. Common causes: EMAIL_FROM is not on the domain verified in Resend, the Resend plan's limit is used up, or the API key changed.` } };
+  const result = total ? `Sent ${total} (${sentText})` : (campaigns?.length ? (notes.length ? `Nothing due: ${notes.join("; ")}` : "Nothing due right now.") : "No campaign is running.");
+  return { body: { sent: report }, result, sent: total };
 }

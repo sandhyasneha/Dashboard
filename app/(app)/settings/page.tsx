@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { PageHeader } from "@/components/ui";
 import { SettingsForm } from "@/components/SettingsForm";
 import { SyncAlertTest } from "@/components/SyncAlertTest";
+import { DailyReportButton } from "@/components/DailyReportButton";
 import { HoldSwitch } from "@/components/HoldSwitch";
 import { alertRecipients, syncHealth } from "@/lib/syncAlert";
 import { when } from "@/lib/format";
@@ -47,6 +48,9 @@ Content-Type: application/json
               {s?.sync_alert_sent_at && <div className="flex justify-between gap-4"><dt className="text-muted">Alert sent</dt><dd className="text-right">{when(s.sync_alert_sent_at)}</dd></div>}
             </dl>
             <SyncAlertTest />
+            <h3 className="font-semibold mt-6 mb-1">Daily report and sender alerts</h3>
+            <p className="text-sm text-muted">Every morning at 9:00 AM India time, the same people get a short report: is the data fresh, is sending working, and what each campaign sent, delivered and bounced. If a campaign should be sending but is not, they get an email within minutes, with the reason (at most once every 12 hours per problem).</p>
+            <DailyReportButton />
           </section>
           <section className="panel p-6">
             <h2 className="font-semibold mb-1">Suppression list</h2>

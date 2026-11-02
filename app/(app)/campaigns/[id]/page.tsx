@@ -8,6 +8,7 @@ import { centralLabel } from "@/lib/schedule";
 import { DailyLimit } from "@/components/DailyLimit";
 import { TestSendsPanel } from "@/components/TestSendsPanel";
 import { HoldBanner } from "@/components/HoldBanner";
+import { SenderStatus } from "@/components/SenderStatus";
 import Link from "next/link";
 import { n, pct, when, titleCase } from "@/lib/format";
 
@@ -39,6 +40,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
           <CampaignControls id={c.id} status={c.status} /></div>} />
 
       <HoldBanner />
+      <SenderStatus />
       {c.kind === "reminder" && <div className="panel p-4 mb-6 text-sm">Automatic reminder. New people are added every day while reminders are switched on. To change the emails, use <Link href="/dashboard/customer-list#reminders" className="text-sign font-medium hover:underline">Customers, Automatic reminders</Link>.</div>}
       {c.status !== "completed" && <DailyLimit id={c.id} value={c.daily_cap} />}
 
@@ -66,7 +68,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
             <tbody>{recent.map((m: any, i: number) => (
               <tr key={i}><td className="font-medium">{titleCase(m.lead?.company_name) || "—"} <span className="text-muted">{m.lead?.state}</span></td><td className="text-muted">{m.lead?.email}</td><td>{m.step_position}</td>
                 <td className="text-muted max-w-xs truncate">{m.subject}</td><td><StatusPill status={m.last_event === "bounced" || m.last_event === "complained" ? "bounced" : m.last_event === "opened" || m.last_event === "clicked" ? "customer" : "new"} /> <span className="text-xs text-muted">{m.last_event}</span></td><td className="text-muted whitespace-nowrap">{when(m.sent_at)}</td></tr>))}</tbody></table>
-        ) : <p className="px-5 py-8 text-sm text-muted">{c.status === "draft" ? "Start the campaign or schedule it to begin sending. Emails go out within 15 minutes, during the send window (weekdays, 9 AM to 5 PM Central)." : c.status === "scheduled" ? "Scheduled. Nothing is sent until the start time." : "Nothing sent yet."}</p>}
+        ) : <p className="px-5 py-8 text-sm text-muted">{c.status === "draft" ? "Start the campaign or schedule it to begin sending. Emails go out within 5 minutes, during the send window (weekdays, 9 AM to 5 PM Central)." : c.status === "scheduled" ? "Scheduled. Nothing is sent until the start time." : "Nothing sent yet."}</p>}
       </section>
     </>
   );

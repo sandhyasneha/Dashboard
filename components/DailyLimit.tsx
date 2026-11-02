@@ -9,7 +9,7 @@ export function DailyLimit({ id, value }: { id: string; value: number }) {
   async function save() {
     setBusy(true); setMsg(null);
     const res = await fetch("/api/campaigns", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, daily_cap: +v }) });
-    setMsg(res.ok ? { ok: true, text: "Saved. It applies from the next 15-minute run." } : { ok: false, text: (await res.json()).error ?? "Could not save." });
+    setMsg(res.ok ? { ok: true, text: "Saved. It applies from the next run (every 5 minutes)." } : { ok: false, text: (await res.json()).error ?? "Could not save." });
     router.refresh(); setBusy(false);
   }
   return (

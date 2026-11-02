@@ -67,10 +67,18 @@ function recoveredEmail(h: SyncHealth) {
   return { subject: "TruckTaxPro: the daily sync is working again", text };
 }
 
-async function send(to: string[], mail: { subject: string; text: string }) {
+/** Sends a plain internal email to the alert recipients (sync alerts, sender alerts, the daily report). Not a campaign email. */
+export async function sendAdminEmail(mail: { subject: string; text: string }, kind = "admin") {
+  const to = alertRecipients();
+  if (!to.length) throw new Error("No recipients: set SYNC_ALERT_EMAILS or ADMIN_EMAILS in Vercel.");
+  await send(to, mail, kind);
+  return to;
+}
+
+async function send(to: string[], mail: { subject: string; text: string }, kind = "sync_alert") {
   if (!process.env.EMAIL_FROM) throw new Error("EMAIL_FROM is not set in Vercel.");
   const html = `<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;color:#1f2937;white-space:pre-wrap">${escape(mail.text)}</div>`;
-  const { error } = await resend.emails.send({ from: process.env.EMAIL_FROM, to, subject: mail.subject, text: mail.text, html, tags: [{ name: "kind", value: "sync_alert" }] });
+  const { error } = await resend.emails.send({ from: process.env.EMAIL_FROM, to, subject: mail.subject, text: mail.text, html, tags: [{ name: "kind", value: kind }] });
   if (error) throw new Error(error.message);
 }
 
