@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { sendBatchStrict, type OutboundEmail } from "@/lib/resend";
 import { PEAK_MONTHS, centralMonth } from "@/lib/schedule";
 import { fill, renderHtml, renderText, unsubscribeToken } from "@/lib/template";
+import { postalAddress } from "@/lib/brand";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
   const denied = requireCron(req); if (denied) return denied;
   const sb = supabaseAdmin();
   const app = process.env.NEXT_PUBLIC_APP_URL!;
-  if (!process.env.COMPANY_POSTAL_ADDRESS) return NextResponse.json({ skipped: "COMPANY_POSTAL_ADDRESS is not set in Vercel. Every marketing email must carry your postal address, so sending is paused until it is added." });
+  if (!postalAddress()) return NextResponse.json({ skipped: "COMPANY_POSTAL_ADDRESS is not set in Vercel. Every marketing email must carry your postal address, so sending is paused until it is added." });
 
   // Hold all sending (Settings): nothing is sent and scheduled campaigns wait. A missing setting counts as ON, to fail safe.
   const { data: hold, error: holdErr } = await sb.from("settings").select("hold_all").eq("id", 1).maybeSingle();
