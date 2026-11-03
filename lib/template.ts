@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { fill, renderEmail, renderEmailText, type LeadVars } from "./emailHtml";
-import { emailOpts } from "./brand";
+import { emailOpts, type Audience } from "./brand";
 
 export { fill };
 export type { LeadVars };
@@ -16,5 +16,5 @@ export function verifyUnsubscribeToken(token: string): string | null {
   } catch { return null; }
 }
 
-export const renderHtml = (bodyMd: string, unsubscribeUrl: string) => renderEmail(bodyMd, unsubscribeUrl, emailOpts());
-export const renderText = (bodyMd: string, unsubscribeUrl: string) => renderEmailText(bodyMd, unsubscribeUrl, emailOpts());
+export const renderHtml = (bodyMd: string, unsubscribeUrl: string, audience: Audience = "prospect") => renderEmail(bodyMd, unsubscribeUrl, emailOpts(audience));
+export const renderText = (bodyMd: string, unsubscribeUrl: string, audience: Audience = "prospect") => renderEmailText(bodyMd, unsubscribeUrl, emailOpts(audience));

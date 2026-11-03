@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase-server";
 import { sendBatchStrict, type OutboundEmail } from "@/lib/resend";
 import { fill, renderHtml, renderText, unsubscribeToken } from "@/lib/template";
+import { audienceOf } from "@/lib/brand";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -21,6 +22,10 @@ export async function POST(req: Request) {
   if (recipients.length > 5) return NextResponse.json({ error: "Up to 5 addresses at a time." }, { status: 400 });
 
   let list: { subject: string; body_md: string }[] = [];
+  // The footer says why they get the email: customers (renewal, reminder) or prospects (everything else).
+  let kind: string | null = typeof body.kind === "string" ? body.kind : null;
+  if (body.campaign_id) kind = (await supabaseAdmin().from("campaigns").select("kind").eq("id", body.campaign_id).maybeSingle()).data?.kind ?? kind;
+  const audience = audienceOf(kind);
   if (Array.isArray(body.steps) && body.steps.length) {
     list = body.steps.filter((s: any) => typeof s?.subject === "string" && typeof s?.body_md === "string" && s.subject.trim() && s.body_md.trim());
   } else if (typeof body.subject === "string" && typeof body.body_md === "string" && body.subject.trim() && body.body_md.trim()) {
@@ -40,7 +45,7 @@ export async function POST(req: Request) {
     const unsub = `${process.env.NEXT_PUBLIC_APP_URL}/api/u/${unsubscribeToken(to)}`;
     const bodyMd = fill(s.body_md, vars);
     const tag = list.length > 1 ? `[TEST ${i + 1}/${list.length}] ` : "[TEST] ";
-    return { to, subject: tag + fill(s.subject, vars), html: renderHtml(bodyMd, unsub), text: renderText(bodyMd, unsub), unsubscribeUrl: unsub, tags: [{ name: "test", value: "true" }] };
+    return { to, subject: tag + fill(s.subject, vars), html: renderHtml(bodyMd, unsub, audience), text: renderText(bodyMd, unsub, audience), unsubscribeUrl: unsub, tags: [{ name: "test", value: "true" }] };
   }));
 
   const { ids, error } = await sendBatchStrict(emails);

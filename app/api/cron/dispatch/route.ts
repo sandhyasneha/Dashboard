@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { sendBatchStrict, type OutboundEmail } from "@/lib/resend";
 import { PEAK_MONTHS, centralMonth } from "@/lib/schedule";
 import { fill, renderHtml, renderText, unsubscribeToken } from "@/lib/template";
-import { postalAddress } from "@/lib/brand";
+import { postalAddress, audienceOf } from "@/lib/brand";
 import { recordRun, type Problem } from "@/lib/senderMonitor";
 
 export const maxDuration = 300;
@@ -171,7 +171,7 @@ async function run(): Promise<{ body: Record<string, unknown>; result: string; s
           enrollmentId: e.id, leadId: lead.id, pos: nextPos,
           email: {
             to: lead.email, subject: fill(step.subject, vars),
-            html: renderHtml(bodyMd, unsub), text: renderText(bodyMd, unsub), unsubscribeUrl: unsub,
+            html: renderHtml(bodyMd, unsub, audienceOf(c.kind)), text: renderText(bodyMd, unsub, audienceOf(c.kind)), unsubscribeUrl: unsub,
             tags: [{ name: "campaign", value: c.id }, { name: "step", value: String(nextPos) }],
           },
         });
