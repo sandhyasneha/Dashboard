@@ -23,6 +23,9 @@ export async function recordRun(result: string, sent: number, problem?: Problem 
         await sendAdminEmail({ subject: problem.subject, text: `${problem.text}\n\nCampaigns: ${app()}/campaigns\nGuide: ${app()}/kb/troubleshooting` }, "sender_alert");
         patch.dispatch_alert_key = problem.key; patch.dispatch_alert_sent_at = now.toISOString();
       }
+    } else if (s?.dispatch_alert_key?.startsWith("brake:")) {
+      // An automatic pause was already emailed; the campaign page and the daily report keep showing it. Nothing more to send.
+      patch.dispatch_alert_key = null; patch.dispatch_alert_sent_at = null;
     } else if (s?.dispatch_alert_key && sent > 0) {
       await sendAdminEmail({ subject: "TruckTaxPro: campaign emails are sending again", text: `Campaign emails are going out again. This run: ${result}\n\nNo action is needed.\n\n${app()}/campaigns` }, "sender_alert");
       patch.dispatch_alert_key = null; patch.dispatch_alert_sent_at = null;

@@ -15,6 +15,25 @@ export const fetchCache = "force-no-store";   // never reuse an old database ans
 const PER_RUN = 50;
 
 /**
+ * Bounce brake. Before sending, look at the campaign's most recent emails (up to 500, sent at least 10 minutes ago so
+ * bounce reports have arrived). With 100 or more to judge from, pause the campaign if more than 5% bounced (more than 20% of the first 20 also stops it) or 2 or more
+ * were marked as spam. Above those levels Gmail and Yahoo start sending everything from the domain to spam.
+ */
+const BRAKE_MIN = 100, BRAKE_BOUNCE = 0.05, BRAKE_COMPLAINTS = 2;
+async function bounceBrake(sb: ReturnType<typeof supabaseAdmin>, c: any): Promise<string | null> {
+  const upTo = new Date(Date.now() - 10 * 60000).toISOString();
+  let q = sb.from("messages").select("bounced_at, complained_at").eq("campaign_id", c.id).lte("sent_at", upTo);
+  if (c.brake_from) q = q.gte("sent_at", c.brake_from);
+  const { data } = await q.order("sent_at", { ascending: false }).limit(500);
+  const rows = data ?? [];
+  const bounced = rows.filter((m) => m.bounced_at).length, complained = rows.filter((m) => m.complained_at).length;
+  if (complained >= BRAKE_COMPLAINTS) return `${complained} of its last ${rows.length} emails were marked as spam`;
+  // A very bad list is stopped early: 20 emails are enough to judge when more than a fifth of them bounce.
+  if ((rows.length >= BRAKE_MIN && bounced / rows.length > BRAKE_BOUNCE) || (rows.length >= 20 && bounced / rows.length > 0.2)) return `${bounced} of its last ${rows.length} emails bounced (${Math.round((bounced / rows.length) * 1000) / 10}%, the limit is 5%)`;
+  return null;
+}
+
+/**
  * Every 5 minutes: send due steps for running campaigns, within caps and the send window.
  * Every run records what it did, in plain words, and raises an alert email when a campaign should be sending but is not.
  */
@@ -84,10 +103,20 @@ async function run(): Promise<{ body: Record<string, unknown>; result: string; s
   const report: Record<string, number> = {};
   const notes: string[] = [];
   let runFailed = false, failure = "";
+  let brakeProblem: Problem | null = null;
   const startOfDay = new Date(); startOfDay.setUTCHours(0, 0, 0, 0);
 
   for (const c of campaigns ?? []) {
     if (hour < c.send_window_start || hour >= c.send_window_end) continue;
+    const why = await bounceBrake(sb, c);
+    if (why) {
+      await sb.from("campaigns").update({ status: "paused" }).eq("id", c.id);
+      await sb.from("campaigns").update({ paused_reason: `Paused automatically on ${new Date().toISOString().slice(0, 10)}: ${why}.` }).eq("id", c.id);   // needs patch-018.sql; harmless without it
+      notes.push(`${c.name}: paused automatically, ${why}`);
+      brakeProblem = { key: "brake:" + c.id, subject: `TruckTaxPro: campaign "${c.name}" was paused automatically`,
+        text: `The sender paused the campaign "${c.name}" because ${why}.\n\nSending more would risk Gmail and Yahoo putting all TruckTaxPro emails, including customer reminders, into spam. The other campaigns carry on.\n\nWhat to do:\n1. Open the campaign and look at the Recent emails list for bounced addresses.\n2. If the list is a new import (for example FMCSA), run it through an email-verification service, import only the valid addresses as a new list, and start a new campaign for them.\n3. Or press Resume to try again: the count starts from zero, and the sender pauses it again if the next 100 emails bounce as much.` };
+      continue;
+    }
     const { count: sentToday } = await sb.from("messages").select("id", { count: "exact", head: true })
       .eq("campaign_id", c.id).gte("sent_at", startOfDay.toISOString());
     const campRemaining = c.daily_cap - (sentToday ?? 0);
@@ -136,11 +165,12 @@ async function run(): Promise<{ body: Record<string, unknown>; result: string; s
         const step = steps.find((s) => s.position === nextPos);
         if (!step) { await sb.from("enrollments").update({ status: "completed" }).eq("id", e.id); continue; }
         const unsub = `${app}/api/u/${unsubscribeToken(lead.email)}`;
-        const bodyMd = fill(step.body_md, lead);
+        const vars = { ...lead, company: lead.company_name };   // {{company}} reads "company"; the leads table calls it company_name
+        const bodyMd = fill(step.body_md, vars);
         outbound.push({
           enrollmentId: e.id, leadId: lead.id, pos: nextPos,
           email: {
-            to: lead.email, subject: fill(step.subject, lead),
+            to: lead.email, subject: fill(step.subject, vars),
             html: renderHtml(bodyMd, unsub), text: renderText(bodyMd, unsub), unsubscribeUrl: unsub,
             tags: [{ name: "campaign", value: c.id }, { name: "step", value: String(nextPos) }],
           },
@@ -185,6 +215,7 @@ async function run(): Promise<{ body: Record<string, unknown>; result: string; s
   if (runFailed) return { body: { sent: report, warning: "Resend rejected a batch. Those emails will be retried on the next run." }, sent: total,
     result: `Resend refused some emails: ${failure}${sentText ? ` (sent: ${sentText})` : ""}`,
     problem: { key: "resend:" + failure.slice(0, 60), subject: "TruckTaxPro: Resend refused campaign emails", text: `Resend did not accept some campaign emails. Its answer:\n\n${failure}\n\nThey are retried every 5 minutes. Common causes: EMAIL_FROM is not on the domain verified in Resend, the Resend plan's limit is used up, or the API key changed.` } };
+  if (brakeProblem) return { body: { sent: report, paused: notes }, sent: total, result: `${total ? `Sent ${total} (${sentText}). ` : ""}${notes.filter((x) => x.includes("paused automatically")).join("; ")}`, problem: brakeProblem };
   const result = total ? `Sent ${total} (${sentText})` : (campaigns?.length ? (notes.length ? `Nothing due: ${notes.join("; ")}` : "Nothing due right now.") : "No campaign is running.");
   return { body: { sent: report }, result, sent: total };
 }

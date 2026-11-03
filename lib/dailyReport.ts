@@ -16,7 +16,7 @@ export async function buildDailyReport(now = new Date()) {
   const [health, stale, { data: s }, { data: camps }, { data: msgs }, users, paid] = await Promise.all([
     syncHealth(now), senderStaleProblem(now),
     sb.from("settings").select("hold_all, dispatch_last_at, dispatch_last_result, dispatch_alert_key").eq("id", 1).maybeSingle(),
-    sb.from("campaigns").select("id, name, status, daily_cap, scheduled_at").in("status", ["running", "scheduled", "paused"]).order("created_at"),
+    sb.from("campaigns").select("*").in("status", ["running", "scheduled", "paused"]).order("created_at"),
     sb.from("messages").select("campaign_id, delivered_at, bounced_at, complained_at, opened_at, clicked_at").gte("sent_at", since).limit(20000),
     sb.from("ttp_users").select("user_id", { count: "exact", head: true }).gte("registered_at", since),
     sb.from("ttp_filings").select("filing_id", { count: "exact", head: true }).gte("paid_at", since),
@@ -26,6 +26,8 @@ export async function buildDailyReport(now = new Date()) {
   if (!health.ok) problems.push(`Data sync: ${health.problem} Last good sync: ${when(health.lastOk)}.`);
   if (stale) problems.push("Campaign sender: it has not run in the last 30 minutes. Check Vercel, Cron Jobs.");
   if (s?.dispatch_alert_key && s.dispatch_alert_key !== "hold") problems.push(`Campaign sender: ${s.dispatch_last_result ?? "a problem was reported"}.`);
+
+  for (const c of camps ?? []) if (c.status === "paused" && c.paused_reason) problems.push(`${c.name}: ${c.paused_reason} Check the list before pressing Resume.`);
 
   const all = msgs ?? [];
   const sum = (rows: typeof all) => ({ sent: rows.length, delivered: rows.filter((m) => m.delivered_at).length, bounced: rows.filter((m) => m.bounced_at).length, complained: rows.filter((m) => m.complained_at).length, opened: rows.filter((m) => m.opened_at).length });

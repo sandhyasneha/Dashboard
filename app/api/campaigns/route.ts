@@ -69,6 +69,8 @@ export async function PATCH(req: Request) {
   }
   const { error } = await supabaseAdmin().from("campaigns").update(next).eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  // Starting or resuming clears the automatic-pause note, and the bounce brake counts from now (patch-018.sql; harmless without it).
+  if (status === "running" || status === "scheduled") await supabaseAdmin().from("campaigns").update({ paused_reason: null, brake_from: new Date().toISOString() }).eq("id", id);
   if (status === "completed") {
     // Ending a campaign releases its contacts, so a new campaign can use them.
     const { error: re } = await supabaseAdmin().rpc("release_campaign", { p_campaign_id: id });

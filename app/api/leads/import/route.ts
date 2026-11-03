@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin, supabaseServer } from "@/lib/supabase-server";
 import { chunk } from "@/lib/util";
-import { EMAIL_COLUMNS, PHONE_COLUMNS, findColumn } from "@/lib/importColumns";
+import { EMAIL_COLUMNS, PHONE_COLUMNS, COMPANY_COLUMNS, STATE_COLUMNS, UNITS_COLUMNS, DOT_COLUMNS, findColumn } from "@/lib/importColumns";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -22,8 +22,14 @@ export async function POST(req: Request) {
     const email = String(pick(r, EMAIL_COLUMNS) ?? "").trim().toLowerCase();
     if (!EMAIL.test(email) || seen.has(email)) return [];
     seen.add(email);
-    const phone = pick(r, PHONE_COLUMNS);
-    return [{ email, phone: phone ? String(phone).trim() || null : null, carrier_type: listName, source_file: source_file ?? null }];
+    const text = (names: string[], max: number) => { const v = pick(r, names); const t = v == null ? "" : String(v).trim(); return t ? t.slice(0, max) : null; };
+    const units = Number(String(pick(r, UNITS_COLUMNS) ?? "").replace(/[^0-9]/g, ""));
+    const st = text(STATE_COLUMNS, 20);
+    return [{
+      email, phone: text(PHONE_COLUMNS, 40), carrier_type: listName, source_file: source_file ?? null,
+      company_name: text(COMPANY_COLUMNS, 200), state: st && /^[A-Za-z]{2}$/.test(st) ? st.toUpperCase() : st,
+      power_units: units > 0 && units < 100000 ? units : null, usdot: text(DOT_COLUMNS, 20),
+    }];
   });
   if (clean.length === 0) return NextResponse.json({ received: rows.length, valid: 0, suppressed: 0, inserted: 0, updated: 0 });
 
@@ -51,9 +57,15 @@ export async function POST(req: Request) {
     const { error } = await sb.rpc("add_leads_to_list", { p_emails: known.map((c) => c.email), p_list: listName });
     if (error) return NextResponse.json({ error: error.message + " (Did you run supabase/patch-016.sql?)" }, { status: 500 });
   }
-  for (const c of known) {
-    if (!c.phone) continue;
-    await sb.from("leads").update({ phone: c.phone, updated_at: new Date().toISOString() }).eq("email", c.email).is("phone", null);
+  // Addresses already on file: fill in any empty details (phone, company, state, trucks, DOT) in one call (patch-018.sql).
+  // Without that patch, fall back to filling in the phone number only, one by one.
+  const withDetails = known.filter((c) => c.phone || c.company_name || c.state || c.power_units || c.usdot);
+  if (withDetails.length) {
+    const { error: fe } = await sb.rpc("fill_lead_details", { p_rows: withDetails });
+    if (fe) for (const c of withDetails) {
+      if (!c.phone) continue;
+      await sb.from("leads").update({ phone: c.phone, updated_at: new Date().toISOString() }).eq("email", c.email).is("phone", null);
+    }
   }
   return NextResponse.json({ received: rows.length, valid: clean.length, suppressed: suppressed.size, inserted: fresh.length, updated: known.length });
 }

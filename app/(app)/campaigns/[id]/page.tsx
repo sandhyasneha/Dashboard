@@ -41,6 +41,7 @@ export default async function CampaignPage({ params }: { params: { id: string } 
 
       <HoldBanner />
       <SenderStatus />
+      {c.status === "paused" && c.paused_reason && <div className="panel p-4 mb-6 text-sm border-l-4 border-amber"><span className="font-medium">{c.paused_reason}</span> Too many bounces or spam reports can send all TruckTaxPro emails to spam. Check the addresses (or verify the list) before pressing Resume. Resume starts the count from zero.</div>}
       {c.kind === "reminder" && <div className="panel p-4 mb-6 text-sm">Automatic reminder. New people are added every day while reminders are switched on. To change the emails, use <Link href="/dashboard/customer-list#reminders" className="text-sign font-medium hover:underline">Customers, Automatic reminders</Link>.</div>}
       {c.status !== "completed" && <DailyLimit id={c.id} value={c.daily_cap} />}
 

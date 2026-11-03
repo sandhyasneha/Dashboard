@@ -24,7 +24,14 @@ const INK = "#1b2431";
 
 /** Replace {{company}}, {{state}}, {{power_units}}, {{fleet_type}} in subject/body. */
 export function fill(text: string, v: LeadVars) {
-  const company = (v.company || "your company").replace(/\b\w+/g, (w) => w[0] + w.slice(1).toLowerCase());
+  // "ACE TRANSPORT LLC" reads as "Ace Transport LLC": words in title case, business suffixes and short letter groups kept in capitals.
+  const KEEP = new Set(["LLC", "LLP", "USA", "III", "DBA", "PLLC"]);
+  const SMALL = new Set(["OF", "AN", "TO", "IN", "ON", "AT", "BY", "OR", "MY", "DE", "LA", "EL", "AND", "THE"]);
+  const company = (v.company || "your company").replace(/\b\w+/g, (w) => {
+    const up = w.toUpperCase();
+    if (KEEP.has(up) || (w.length === 2 && w === up && !SMALL.has(up))) return up;   // LLC, AK, JB, II
+    return w[0] + w.slice(1).toLowerCase();
+  });
   return text
     .replace(/\{\{\s*company\s*\}\}/g, company)
     .replace(/\{\{\s*state\s*\}\}/g, v.state || "")
