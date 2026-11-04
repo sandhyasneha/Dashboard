@@ -3,6 +3,7 @@ import { PageHeader, Stat, Empty } from "@/components/ui";
 import { Pager } from "@/components/Pager";
 import { RetentionImport } from "@/components/RetentionImport";
 import { ReminderPanel } from "@/components/ReminderPanel";
+import { BotSignups, type HeldBot } from "@/components/BotSignups";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { activeTaxYear } from "@/lib/dash";
 import { loadReminderConfig, openReminderCampaign } from "@/lib/reminders";
@@ -27,6 +28,12 @@ export default async function CustomerList({ searchParams }: { searchParams: Rec
   ]);
   const waiting = async (id?: string) => id ? ((await sb.from("enrollments").select("id", { count: "exact", head: true }).eq("campaign_id", id).eq("status", "active")).count ?? 0) : 0;
   const [waitReg, waitUnpaid] = await Promise.all([waiting(campReg?.id), waiting(campUnpaid?.id)]);
+  // Likely-bot sign-ups held back (patch-019.sql). Without the patch the queries fail and the panel is not shown.
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const [bots, botWeek] = await Promise.all([
+    sb.from("bot_signups").select("user_id, name, email, phone, registered_at, reason", { count: "exact" }).eq("released", false).order("held_at", { ascending: false }).limit(50),
+    sb.from("bot_signups").select("user_id", { count: "exact", head: true }).eq("released", false).gte("held_at", weekAgo),
+  ]);
   const st = settings.data as any;
   const remindersMissing = !st || !("reminders" in st);
   const params = filterParams(f);
@@ -99,6 +106,8 @@ export default async function CustomerList({ searchParams }: { searchParams: Rec
         The annual renewal for every customer is due by 31 August; a truck first used in another month is due by the end of the following month.
         <strong> Source</strong>: Existing lead = was on your contact list before signing up; New = was not; Past customer = signed up before the contact list was loaded; Imported = only in an import file.
       </p>
+
+      {!bots.error && <BotSignups rows={(bots.data ?? []) as HeldBot[]} total={bots.count ?? 0} week={botWeek.count ?? 0} />}
 
       <ReminderPanel initial={loadReminderConfig(st?.reminders)} campaigns={{ registered: campReg, unpaid: campUnpaid }} waiting={{ registered: waitReg, unpaid: waitUnpaid }}
         lastResult={st?.reminders_last_result ?? null} hold={st?.hold_all !== false} missing={remindersMissing} />

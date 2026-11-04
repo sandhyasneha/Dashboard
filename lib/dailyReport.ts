@@ -21,6 +21,7 @@ export async function buildDailyReport(now = new Date()) {
     sb.from("ttp_users").select("user_id", { count: "exact", head: true }).gte("registered_at", since),
     sb.from("ttp_filings").select("filing_id", { count: "exact", head: true }).gte("paid_at", since),
   ]);
+  const bots = await sb.from("bot_signups").select("user_id", { count: "exact", head: true }).eq("released", false).gte("held_at", since);   // patch-019.sql
 
   const problems: string[] = [];
   if (!health.ok) problems.push(`Data sync: ${health.problem} Last good sync: ${when(health.lastOk)}.`);
@@ -52,6 +53,7 @@ export async function buildDailyReport(now = new Date()) {
     lines.push(`- ${c.name} (${state}, ${c.daily_cap}/day): ${m.sent} sent in 24h, ${m.delivered} delivered, ${m.bounced} bounced; ${left ?? 0} still to email.`);
   }
   lines.push("", "Customers (last 24 hours)", `- ${users.count ?? 0} new registrations, ${paid.count ?? 0} paid returns.`);
+  if (!bots.error && (bots.count ?? 0) > 0) lines.push(`- ${bots.count} likely bot sign-up${bots.count === 1 ? "" : "s"} held back (not counted, never emailed). Customers page, Held back as likely bots, if you want to check them.`);
   lines.push("", `Dashboard: ${app()}`);
 
   const subject = problems.length ? `TruckTaxPro daily report: ${problems.length} thing${problems.length > 1 ? "s" : ""} to check` : "TruckTaxPro daily report: all good";
